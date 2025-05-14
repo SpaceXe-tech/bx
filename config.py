@@ -34,13 +34,13 @@ UPSTREAM_REPO = getenv(
     "UPSTREAM_REPO",
     "https://github.com/IKEX01/billamusicL1",
 )
-UPSTREAM_BRANCH = getenv("UPSTREAM_BRANCH", "master")
+UPSTREAM_BRANCH = getenv("UPSTREAM_BRANCH", "main")
 GIT_TOKEN = getenv(
     "GIT_TOKEN", None
 )  # Fill this variable if your upstream repository is private
 
 SUPPORT_CHANNEL = getenv("SUPPORT_CHANNEL", "https://t.me/BillaSpace")
-SUPPORT_CHAT = getenv("SUPPORT_CHAT", "https://t.me/storm_techh")
+SUPPORT_CHAT = getenv("SUPPORT_CHAT", "https://t.me/storm_core")
 
 # Set this to True if you want the assistant to automatically leave chats after an interval
 AUTO_LEAVING_ASSISTANT = bool(getenv("AUTO_LEAVING_ASSISTANT", False))
