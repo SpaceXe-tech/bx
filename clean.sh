@@ -12,9 +12,9 @@ echo "║           VX System Cleaner                  ║"
 echo "╚══════════════════════════════════════════════╝"
 echo -e "${NC}"
 
-echo -e "${YELLOW}Changing to billamusic directory...${NC}"
+echo -e "${YELLOW}Changing to BV2 directory...${NC}"
 if ! cd ~/billamusicL1 2>/dev/null; then
-    echo -e "${RED}Error: Failed to change to ~/VX7 directory. Does it exist?${NC}"
+    echo -e "${RED}Error: Failed to change to ~/BV2 directory. Does it exist?${NC}"
     exit 1
 fi
 
