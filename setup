@@ -1,126 +1,159 @@
 #!/bin/bash
 
-pprint (){
-	cred='\033[0;31m'
-	cgreen='\033[0;32m'
-	cyellow='\033[0;33m'
-	cblue='\033[0;34m'
-	cpurple='\033[0;35m'
-	eval "export color='$cpurple'"
-	[ ! -z $2 ] && eval "export color=\"\$$2\""
-    printf "$color $1"
+pprint() {
+    declare -A colors=(
+        ['red']='\033[0;31m'
+        ['green']='\033[0;32m'
+        ['yellow']='\033[0;33m'
+        ['blue']='\033[0;34m'
+        ['purple']='\033[0;35m'
+        ['cyan']='\033[0;36m'
+    )
+    
+    local message="$1"
+    local color="${2:-purple}"
+    
+    local color_code="${colors[$color]:-${colors['purple']}}"
+    printf "${color_code}${message}"
 }
 
-color_reset(){ printf '\033[0;37m';}
-
-yesnoprompt(){
-	old_stty_cfg=$(stty -g)
-	stty raw -echo ; answer=$(head -c 1)
-	stty $old_stty_cfg
-	echo "$answer" | grep -iq "^y"
+color_reset() { 
+    printf '\033[0m' 
 }
 
-update() {
-	pprint "\n\nUpdating package list.. "
-	sudo apt update 2>&1 | grep "can be upgraded" &>/dev/null
-	if [ $? -eq 0 ]; then
-		pprint "UPDATE AVAILABLE" "cgreen"
-		pprint "\n\nDo you want to automatically upgrade (y/n)?"
-		if yesnoprompt; then
-			pprint "\n\nUpgrading packages.. "
-			sudo apt upgrade -y &>/dev/null &&
-			pprint "DONE!\n\n" "cgreen" || (pprint "FAIL.\n\n" "cred"; exit 1)
-		else
-			echo
-		fi
-	else
-		pprint "ALREADY UP TO DATE\n\n" "cgreen"
-	fi
+yesnoprompt() {
+    pprint " (y/n)? " "cyan"
+    old_stty_cfg=$(stty -g)
+    stty raw -echo
+    answer=$(head -c 1)
+    stty $old_stty_cfg
+    echo
+    [[ "$answer" =~ [yY] ]]
 }
 
-packages(){
-	if ! command -v pip &>/dev/null; then
-		pprint "Couldn't found pip, installing now..."
-		sudo apt install python3-pip -y 2>pypilog.txt 1>/dev/null &&
-		pprint "SUCCESS.\n\n" "cgreen" || (pprint "FAIL.\n\n" "cred"; exit 1)
-	fi
-
-	if ! command -v ffmpeg &>/dev/null; then
-		pprint "Couldn't found ffmpeg, installing now..."
-		if sudo apt install ffmpeg -y &>/dev/null;then
-			pprint "SUCCESS.\n\n" "cgreen"
-		else
-			pprint "FAIL.\n\n" "cred"
-			pprint "You need to install ffmpeg manually in order to deploy AnonXMusic, exiting...\n" "cblue"
-			exit 1
-		fi
-	fi
-
-	# Check ffmpeg version and warn user if necessary.
-	fv=$(grep -Po 'version (3.*?) ' <<< $(ffmpeg -version)) &&
-	pprint "Playing live streams not going to work since you have ffmpeg $fv, live streams are supported by version 4+.\n" "cblue"
+update_system() {
+    pprint "\n\nUpdating package list.. " "blue"
+    if sudo apt update 2>&1 | grep -q "can be upgraded"; then
+        pprint "UPDATES AVAILABLE" "green"
+        pprint "\n\nDo you want to automatically upgrade packages"
+        if yesnoprompt; then
+            pprint "\n\nUpgrading packages.. " "blue"
+            if sudo apt upgrade -y &>/dev/null; then
+                pprint "SUCCESS!\n\n" "green"
+            else
+                pprint "FAILED\n\n" "red"
+                exit 1
+            fi
+        else
+            echo
+        fi
+    else
+        pprint "SYSTEM IS UP TO DATE\n\n" "green"
+    fi
 }
 
+install_packages() {
+    if ! command -v pip &>/dev/null; then
+        pprint "Python pip not found, installing now..." "yellow"
+        if sudo apt install python3-pip -y &>>pypilog.txt; then
+            pprint "SUCCESS.\n\n" "green"
+        else
+            pprint "FAILED.\n\n" "red"
+            exit 1
+        fi
+    fi
 
-node(){
-	command -v npm &>/dev/null && return
-	pprint "Installing Nodejs and Npm..  "
-	curl -fssL https://deb.nodesource.com/setup_19.x | sudo -E bash - &>nodelog.txt &&
-	sudo apt install -y nodejs &>>nodelog.txt &&
-	sudo npm i -g npm &>>nodelog.txt &&
-	pprint "SUCCESS!\n" "cgreen" || (pprint "FAIL.\n" "cred"; exit 1)
+    if ! command -v ffmpeg &>/dev/null; then
+        pprint "FFmpeg not found, installing now..." "yellow"
+        if sudo apt install ffmpeg -y &>/dev/null; then
+            pprint "SUCCESS.\n\n" "green"
+        else
+            pprint "FAILED.\n\n" "red"
+            pprint "You need to install ffmpeg manually to deploy VX, exiting...\n" "blue"
+            exit 1
+        fi
+    fi
+
+    local ffmpeg_version=$(ffmpeg -version 2>/dev/null | grep -Po 'version (3.*?) ' | head -1)
+    if [[ "$ffmpeg_version" =~ 3.* ]]; then
+        pprint "Warning: Live streams may not work properly. You have ffmpeg $ffmpeg_version, but version 4+ is recommended.\n" "yellow"
+    fi
 }
 
-
-installation(){
-	pprint "\n\nUpgrading pip and installing dependency packages..."
-	pip3 install -U pip &>>pypilog.txt &&
-	pip3 install -U -r requirements.txt &>>pypilog.txt &&
-	pprint "DONE.\n" "cgreen" && return
-	pprint "FAIL.\n" "cred"
-	exit 1
+install_node() {
+    command -v npm &>/dev/null && return
+    
+    pprint "Installing Node.js and npm.. " "blue"
+    if curl -fsSL https://deb.nodesource.com/setup_19.x | sudo -E bash - &>>nodelog.txt && \
+       sudo apt install -y nodejs &>>nodelog.txt && \
+       sudo npm i -g npm &>>nodelog.txt; then
+        pprint "SUCCESS!\n" "green"
+    else
+        pprint "FAILED.\n" "red"
+        exit 1
+    fi
 }
 
-clear
-pprint "Welcome to AnonXMusic Setup Installer\n\n"
-pprint "If you see any error during Installation Process, Please refer to these files for logs: "
-pprint "\nFor node js errors , Checkout nodelog.txt"
-pprint "\nFor pypi packages errors , Checkout pypilog.txt"
-sleep 1
-pprint "\n\nScript needs sudo privileges in order to update & install packages.\n"
-sudo test
+install_dependencies() {
+    pprint "\n\nUpgrading pip and installing dependencies..." "blue"
+    if pip3 install -U pip &>>pypilog.txt && \
+       pip3 install -U -r requirements.txt &>>pypilog.txt; then
+        pprint "DONE.\n" "green"
+    else
+        pprint "FAILED.\n" "red"
+        exit 1
+    fi
+}
 
-update
-packages
-node
-installation
-pprint "\n\n\n\n\nAnonXMusic Installation Completed !" "cgreen"
-sleep 1
-clear
+setup_configuration() {
+    clear
+    pprint "\nVX Configuration Setup\n\n" "purple"
+    pprint "Enter your configuration values:\n\n" "blue"
+    
+    declare -A config=(
+        ['API_ID']="Telegram API ID"
+        ['API_HASH']="Telegram API HASH"
+        ['BOT_TOKEN']="Telegram Bot Token"
+        ['OWNER_ID']="Owner User ID"
+        ['MONGO_DB_URI']="MongoDB Connection URI"
+        ['LOG_GROUP_ID']="Log Group ID"
+        ['STRING_SESSION']="Telegram String Session"
+    )
+    
+    for key in "${!config[@]}"; do
+        pprint "${config[$key]}: " "cyan"
+        read -r value
+        echo "$key = $value" >> .env
+    done
+}
 
-pprint "\nEnter Your Values Below\n\n\n"
-pprint "API ID: "; color_reset; read api_id
-pprint "\nAPI HASH: "; color_reset; read api_hash
-pprint "\nBOT TOKEN: "; color_reset; read bot_token
-pprint "\nOWNER ID:"; color_reset; read ownid
-pprint "\nMONGO DB URI: "; color_reset; read mongo_db
-pprint "\nLOG GROUP ID: "; color_reset; read logger
-pprint "\nSTRING SESSION: "; color_reset; read string_session
+main() {
+    clear
+    pprint "Welcome to VX Setup Installer\n\n" "purple"
+    pprint "Installation logs will be saved in:\n" "blue"
+    pprint "  - nodelog.txt (for Node.js installation)\n" "yellow"
+    pprint "  - pypilog.txt (for Python packages)\n\n" "yellow"
+    sleep 2
+    
+    pprint "This script requires sudo privileges to install packages.\n" "blue"
+    sudo -v || (pprint "Error: Failed to get sudo privileges.\n" "red"; exit 1)
+    
+    update_system
+    install_packages
+    install_node
+    install_dependencies
+    
+    clear
+    pprint "\nVX Installation Completed Successfully!\n\n" "green"
+    sleep 2
+    
+    setup_configuration
+    
+    clear
+    pprint "\n\nVX setup is now complete!\n" "green"
+    pprint "You can start the bot with: " "blue"
+    pprint "bash start.sh\n\n" "cyan"
+    color_reset
+}
 
-pprint "\n\nProcessing your vars, wait a while !" "cgreen"
-
-if [ -f .env ]; then
-	rm .env
-fi
-
-echo """API_ID = $api_id
-API_HASH = $api_hash
-BOT_TOKEN = $bot_token
-MONGO_DB_URI = $mongo_db
-LOGGER_ID = $logger
-STRING_SESSION = $string_session
-OWNER_ID = $ownid""" > .env
-clear
-
-pprint "\n\n\nThanks for using AnonXMusic installer, your vars have been saved successfully ! \nIf you wanna add more variables add them in your env by : vi .env"
-pprint "\n\nNow you can start the bot by : bash start\n\n"
+main
