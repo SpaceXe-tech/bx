@@ -7,7 +7,7 @@ from ..logging import LOGGER
 
 class Anony(Client):
     def __init__(self):
-        LOGGER(__name__).info(f"Sᴛᴀʀᴛɪɴɢ Sᴛᴏʀᴍ Mᴜsɪᴄ Bᴀʙʏ...")
+        LOGGER(__name__).info(f"Sᴛᴀʀᴛɪɴɢ Bᴀʙʏ...")
         super().__init__(
             name="Opus",
             api_id=config.API_ID,
