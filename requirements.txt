@@ -32,3 +32,4 @@ Flask-RESTful
 pymongo
 httpx==0.27.2
 pyrogram
+cachetools
