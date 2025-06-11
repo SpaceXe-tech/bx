@@ -16,7 +16,7 @@ BOT_TOKEN = getenv("BOT_TOKEN")
 # Get your mongo url from cloud.mongodb.com
 MONGO_DB_URI = getenv("MONGO_DB_URI")
 
-DURATION_LIMIT_MIN = int(getenv("DURATION_LIMIT", 9999999))
+DURATION_LIMIT_MIN = int(getenv("DURATION_LIMIT", 240))
 
 # Chat id of a group for logging bot's activities
 LOGGER_ID = int(getenv("LOGGER_ID", None))
@@ -32,7 +32,7 @@ HEROKU_API_KEY = getenv("HEROKU_API_KEY")
 
 UPSTREAM_REPO = getenv(
     "UPSTREAM_REPO",
-    "https://github.com/IKEX01/billamusicL1",
+    "https://github.com/SpaceXe-tech/bx",
 )
 UPSTREAM_BRANCH = getenv("UPSTREAM_BRANCH", "main")
 GIT_TOKEN = getenv(
@@ -40,7 +40,7 @@ GIT_TOKEN = getenv(
 )  # Fill this variable if your upstream repository is private
 
 SUPPORT_CHANNEL = getenv("SUPPORT_CHANNEL", "https://t.me/BillaSpace")
-SUPPORT_CHAT = getenv("SUPPORT_CHAT", "https://t.me/storm_core")
+SUPPORT_CHAT = getenv("SUPPORT_CHAT", "https://t.me/BillaCore")
 
 # Set this to True if you want the assistant to automatically leave chats after an interval
 AUTO_LEAVING_ASSISTANT = bool(getenv("AUTO_LEAVING_ASSISTANT", False))
@@ -92,11 +92,11 @@ SPOTIFY_PLAYLIST_IMG_URL = "https://graph.org/file/4491c4c570d9ccb1a19d0-1fb0835
 API_URL1 = getenv("API_URL1", None)
 API_URL2 = getenv("API_URL2", None)
 
-def time_to_seconds(time):
-    stringt = str(time)
-    return sum(int(x * 60**i for i, x in enumerate(reversed(stringt.split(":")))))
+def time_to_seconds(string):
+    parts = string.split(":")
+    return sum(int(x) * 60**i for i, x in enumerate(reversed(parts)))
 
-DURATION_LIMIT = int(time_to_seconds(f"{DURATION_LIMIT_MIN}:00"))
+DURATION_LIMIT = time_to_seconds(f"{DURATION_LIMIT_MIN}:00")
 
 if SUPPORT_CHANNEL:
     if not re.match("(?:http|https)://", SUPPORT_CHANNEL):
@@ -108,4 +108,4 @@ if SUPPORT_CHAT:
     if not re.match("(?:http|https)://", SUPPORT_CHAT):
         raise SystemExit(
             "[ERROR] - Your SUPPORT_CHAT url is wrong. Please ensure that it starts with https://"
-        )
+)
