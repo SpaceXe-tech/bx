@@ -24,7 +24,7 @@ from AnonXMusic.utils.logger import play_logs
 from AnonXMusic.utils.stream.stream import stream
 from config import BANNED_USERS, lyrical
 
-sticker_id = "-CAACAgUAAxkBAAIBI2hLzLBL-mYyRKlV7qJsjImGYXMGAAIZEwACqcRgVoN0eWhNMLmnNgQ"
+sticker_id = "CAACAgUAAxkBAAIBI2hLzLBL-mYyRKlV7qJsjImGYXMGAAIZEwACqcRgVoN0eWhNMLmnNgQ"
 
 @app.on_message(
     filters.command(
