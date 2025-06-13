@@ -1,4 +1,6 @@
 import os
+from config import API_URL1, API_URL2
+
 import asyncio
 import re
 import json
@@ -12,7 +14,6 @@ from pyrogram.types import Message
 from youtubesearchpython.__future__ import VideosSearch
 from AnonXMusic.utils.database import is_on_off
 from AnonXMusic.utils.formatters import time_to_seconds
-from config import API_URL1, API_URL2
 import yt_dlp
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -104,56 +105,53 @@ class YouTubeAPI:
             await self._session.close()
 
     async def _download_audio_from_api(self, link: str, retries: int = 3, backoff: float = 1.0) -> Optional[str]:
-    if not self._mp3_api_url:
-        logger.warning("No MP3 API URL provided in config.")
-        return None
-
-    match = self.video_id_pattern.search(link)
-    if not match:
-        logger.error(f"Invalid YouTube URL: {link}")
-        return None
-    video_id = match.group(1)
-    file_path = os.path.join("downloads", f"{video_id}.mp3")  # Changed to .mp3 since API returns MP3
-
-    if os.path.exists(file_path):
-        logger.info(f"File {file_path} already exists. Skipping download.")
-        return file_path
-
-    # Construct API URL with video_id
-    api_url = f"{self._mp3_api_url}?direct&id={video_id}"
-
-    async def try_api(attempt):
-        session = await self._ensure_session()
-        try:
-            async with session.get(api_url, timeout=30) as response:
-                if response.status == 200:
-                    os.makedirs("downloads", exist_ok=True)
-                    with open(file_path, 'wb') as f:
-                        # Stream download in chunks for speed and memory efficiency
-                        async for chunk in response.content.iter_chunked(1024 * 1024):  # 1MB chunks
-                            f.write(chunk)
-                    if os.path.getsize(file_path) > 0:
-                        logger.info(f"Successfully downloaded audio from API: {file_path}")
-                        return file_path
-                    logger.warning(f"Empty file downloaded from {api_url}")
-                    os.remove(file_path)
-                    return None
-                logger.warning(f"API request failed with status {response.status} for {api_url}")
-                return None
-        except (aiohttp.ClientError, asyncio.TimeoutError) as e:
-            logger.error(f"API download attempt {attempt} failed for {api_url}: {str(e)}")
+        if not self._mp3_api_url:
+            logger.warning("No MP3 API URL provided in config.")
             return None
 
-    for attempt in range(retries):
-        result = await try_api(attempt + 1)
-        if result:
-            return result
-        if attempt < retries - 1:
-            await asyncio.sleep(backoff * (2 ** attempt))
-            logger.info(f"Retrying API download, attempt {attempt + 2}")
+        match = self.video_id_pattern.search(link)
+        if not match:
+            logger.error(f"Invalid YouTube URL: {link}")
+            return None
+        video_id = match.group(1)
+        file_path = os.path.join("downloads", f"{video_id}.mp3")  # Changed to .mp3 since API returns MP3
 
-    logger.error(f"All API attempts failed for video ID {video_id}")
-    return None
+        if os.path.exists(file_path):
+            logger.info(f"File {file_path} already exists. Skipping download.")
+            return file_path
+
+        # Construct API URL with video_id
+        api_url = f"{self._mp3_api_url}?direct&id={video_id}"
+
+        async def try_api(attempt):
+            session = await self._ensure_session()
+            try:
+                async with session.get(api_url, timeout=30) as response:
+                    if response.status == 200:
+                        os.makedirs("downloads", exist_ok=True)
+                        with open(file_path, 'wb') as f:
+                            # Stream download in chunks for speed and memory efficiency
+                            async for chunk in response.content.iter_chunked(1024 * 1024):  # 1MB chunks
+                                f.write(chunk)
+                        if os.path.getsize(file_path) > 0:
+                            logger.info(f"Successfully downloaded audio from API: {file_path}")
+                            return file_path
+                        logger.warning(f"Empty file downloaded from {api_url}")
+                        os.remove(file_path)
+                        return None
+                    logger.warning(f"API request failed with status {response.status} for {api_url}")
+                    return None
+            except (aiohttp.ClientError, asyncio.TimeoutError) as e:
+                logger.error(f"API download attempt {attempt} failed for {api_url}: {str(e)}")
+                return None
+
+        for attempt in range(retries):
+            result = await try_api(attempt + 1)
+            if result:
+                return result
+            if attempt < retries - 1:
+                await asyncio.sleep(backoff * (2 ** attempt))
+                logger.info(f"Retrying API download, attempt {attempt + 2}")
 
         logger.error(f"All API attempts failed for video ID {video_id}")
         return None
