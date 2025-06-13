@@ -35,7 +35,7 @@ async def on_left_chat_member(client: Client, message: Message):
     if app.id == message.left_chat_member.id:
         remove_by = message.from_user.mention if message.from_user else "ᴜɴᴋɴᴏᴡɴ ᴜsᴇʀ"
         username = f"@{message.chat.username}" if message.chat.username else None
-        riruru = f"✫ <b><u>#Left ɢʀᴏᴜᴘ</u></b> :\n\nᴄʜᴀᴛ ɪᴅ : {message.chat.id}\nᴄʜᴀᴛ ᴜsᴇʀɴᴀᴍᴇ : {username}\nᴄʜᴀᴛ ᴛɪᴛʟᴇ : {message.chat.title}\n\nᴀᴅᴅᴇᴅ ʙʏ : {remove_by}"
+        riruru = f"✫ <b><u>#Left ɢʀᴏᴜᴘ</u></b> :\n\nᴄʜᴀᴛ ɪᴅ : {message.chat.id}\nᴄʜᴀᴛ ᴜsᴇʀɴᴀᴍᴇ : {username}\nᴄʜᴀᴛ ᴛɪᴛʟᴇ : {message.chat.title}\n\nʀᴇᴍᴏᴠᴇᴅ ʙʏ : {remove_by}"
         butt = InlineKeyboardMarkup(
             [
                 [
