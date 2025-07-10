@@ -1,20 +1,22 @@
 import os
-from config import API_URL1, API_URL2
-
 import asyncio
+
 import re
 import json
-from typing import Union, Tuple, Optional
+
 import glob
 import random
 import logging
+import yt_dlp
 import aiohttp
+from config import API_URL1
+from typing import Union, Tuple, Optional
 from pyrogram.enums import MessageEntityType
 from pyrogram.types import Message
 from youtubesearchpython.__future__ import VideosSearch
 from AnonXMusic.utils.database import is_on_off
 from AnonXMusic.utils.formatters import time_to_seconds
-import yt_dlp
+
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -42,7 +44,7 @@ async def check_file_size(link):
         )
         stdout, stderr = await proc.communicate()
         if proc.returncode != 0:
-            print(f'Error:\n{stderr.decode()}')
+            logger.error(f'Error:\n{stderr.decode()}')
             return None
         return json.loads(stdout.decode())
 
@@ -59,7 +61,7 @@ async def check_file_size(link):
     
     formats = info.get('formats', [])
     if not formats:
-        print("No formats found.")
+        logger.error("No formats found.")
         return None
     
     total_size = parse_size(formats)
@@ -82,18 +84,20 @@ async def shell_cmd(cmd):
 class YouTubeAPI:
     def __init__(self):
         self.base = "https://www.youtube.com/watch?v="
-        self.regex = r"(?:youtube\.com|youtu\.be)"
+        self.regex = r"(?:youtube\.com|youtu\.be|music\.youtube\.com)"
         self.status = "https://www.youtube.com/oembed?url="
         self.listbase = "https://youtube.com/playlist?list="
         self.reg = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
         self.video_id_pattern = re.compile(r"(?:v=|youtu\.be/|youtube\.com/(?:embed/|v/|watch\?v=))([0-9A-Za-z_-]{11})")
-        self._mp3_api_url = API_URL1  # Audio API from config.py
-        self._video_api_url = API_URL2  # Video API from config.py
+        self._api_url = API_URL1  # Single API URL from config.py
         self._session = None
 
     async def _ensure_session(self):
         if self._session is None or self._session.closed:
-            self._session = aiohttp.ClientSession()
+            self._session = aiohttp.ClientSession(
+                timeout=aiohttp.ClientTimeout(total=30),
+                connector=aiohttp.TCPConnector(limit=100)  # Increased connection pool
+            )
         return self._session
 
     async def __aenter__(self):
@@ -104,61 +108,9 @@ class YouTubeAPI:
         if self._session and not self._session.closed:
             await self._session.close()
 
-    async def _download_audio_from_api(self, link: str, retries: int = 3, backoff: float = 1.0) -> Optional[str]:
-        if not self._mp3_api_url:
-            logger.warning("No MP3 API URL provided in config.")
-            return None
-
-        match = self.video_id_pattern.search(link)
-        if not match:
-            logger.error(f"Invalid YouTube URL: {link}")
-            return None
-        video_id = match.group(1)
-        file_path = os.path.join("downloads", f"{video_id}.mp3")  # Changed to .mp3 since API returns MP3
-
-        if os.path.exists(file_path):
-            logger.info(f"File {file_path} already exists. Skipping download.")
-            return file_path
-
-        # Construct API URL with video_id
-        api_url = f"{self._mp3_api_url}?direct&id={video_id}"
-
-        async def try_api(attempt):
-            session = await self._ensure_session()
-            try:
-                async with session.get(api_url, timeout=30) as response:
-                    if response.status == 200:
-                        os.makedirs("downloads", exist_ok=True)
-                        with open(file_path, 'wb') as f:
-                            # Stream download in chunks for speed and memory efficiency
-                            async for chunk in response.content.iter_chunked(1024 * 1024):  # 1MB chunks
-                                f.write(chunk)
-                        if os.path.getsize(file_path) > 0:
-                            logger.info(f"Successfully downloaded audio from API: {file_path}")
-                            return file_path
-                        logger.warning(f"Empty file downloaded from {api_url}")
-                        os.remove(file_path)
-                        return None
-                    logger.warning(f"API request failed with status {response.status} for {api_url}")
-                    return None
-            except (aiohttp.ClientError, asyncio.TimeoutError) as e:
-                logger.error(f"API download attempt {attempt} failed for {api_url}: {str(e)}")
-                return None
-
-        for attempt in range(retries):
-            result = await try_api(attempt + 1)
-            if result:
-                return result
-            if attempt < retries - 1:
-                await asyncio.sleep(backoff * (2 ** attempt))
-                logger.info(f"Retrying API download, attempt {attempt + 2}")
-
-        logger.error(f"All API attempts failed for video ID {video_id}")
-        return None
-
-    async def _download_video_from_api(self, link: str, retries: int = 3, backoff: float = 1.0) -> Optional[str]:
-        if not self._video_api_url:
-            logger.warning("No video API URL provided in config.")
+    async def _download_from_api(self, link: str, download_mode: str, retries: int = 3, backoff: float = 1.0) -> Optional[str]:
+        if not self._api_url:
+            logger.warning("No API URL provided in config.")
             return None
 
         if "&" in link:
@@ -168,14 +120,17 @@ class YouTubeAPI:
             logger.error(f"Invalid YouTube URL: {link}")
             return None
         video_id = match.group(1)
-        file_path = os.path.join("downloads", f"{video_id}.mp4")
+        file_ext = "mp3" if download_mode == "audio" else "mp4"
+        file_path = os.path.join("downloads", f"{video_id}.{file_ext}")
 
         if os.path.exists(file_path):
             logger.info(f"File {file_path} already exists. Skipping download.")
             return file_path
 
         # Construct API URL with full YouTube URL
-        api_url = f"{self._video_api_url}{link}&format=480"
+        youtube_url = f"https://www.youtube.com/watch?v={video_id}"
+        api_url = f"{self._api_url}{youtube_url}&downloadMode={download_mode}"
+        logger.info(f"Trying API_URL1: {api_url}")
 
         async def try_api(attempt):
             session = await self._ensure_session()
@@ -183,18 +138,25 @@ class YouTubeAPI:
                 async with session.get(api_url, timeout=30) as response:
                     if response.status == 200:
                         data = await response.json()
-                        if data.get("status") == "success" and data.get("download_url"):
-                            async with session.get(data["download_url"], timeout=30) as dl_response:
+                        if data.get("status") == 200 and data.get("successful") == "success" and data.get("data", {}).get("url"):
+                            download_url = data["data"]["url"]
+                            filename = data["data"].get("filename", f"{video_id}.{file_ext}")
+                            async with session.get(download_url, timeout=60) as dl_response:
                                 if dl_response.status == 200:
                                     os.makedirs("downloads", exist_ok=True)
                                     with open(file_path, 'wb') as f:
-                                        # Stream download in chunks for speed and memory efficiency
-                                        async for chunk in dl_response.content.iter_chunked(1024 * 1024):  # 1MB chunks
+                                        # Stream download in 8192-byte chunks
+                                        async for chunk in dl_response.content.iter_chunked(8192):
                                             f.write(chunk)
                                     if os.path.getsize(file_path) > 0:
-                                        logger.info(f"Successfully downloaded video from API: {file_path}")
-                                        return file_path
-                                    logger.warning(f"Empty file downloaded from {data['download_url']}")
+                                        logger.info(f"Successfully downloaded {download_mode} from API: {file_path}")
+                                        same_file = os.path.join("downloads", filename)
+                                        if file_path != same_file and os.path.exists(same_file):
+                                            os.remove(same_file)
+                                        if file_path != same_file:
+                                            os.rename(file_path, same_file)
+                                        return same_file
+                                    logger.warning(f"Empty file downloaded from {download_url}")
                                     os.remove(file_path)
                                     return None
                         logger.warning(f"API response invalid or failed: {data}")
@@ -216,7 +178,7 @@ class YouTubeAPI:
                 await asyncio.sleep(backoff * (2 ** attempt))
                 logger.info(f"Retrying API download, attempt {attempt + 2}")
 
-        logger.error(f"All API attempts failed for URL {link}")
+        logger.error(f"All API attempts failed for URL {link} with mode {download_mode}")
         return None
 
     async def exists(self, link: str, videoid: Union[bool, str] = None):
@@ -247,7 +209,7 @@ class YouTubeAPI:
                 for entity in message.caption_entities:
                     if entity.type == MessageEntityType.TEXT_LINK:
                         return entity.url
-        if offset in (None,):
+        if offset is None:
             return None
         return text[offset : offset + length]
 
@@ -480,6 +442,7 @@ class YouTubeAPI:
             }
             x = yt_dlp.YoutubeDL(ydl_optssx)
             x.download([link])
+            return f"downloads/{title}.mp4"
 
         def song_audio_dl():
             fpath = f"downloads/{title}.%(ext)s"
@@ -502,18 +465,18 @@ class YouTubeAPI:
             }
             x = yt_dlp.YoutubeDL(ydl_optssx)
             x.download([link])
+            return f"downloads/{title}.mp3"
 
         try:
             if songvideo:
-                await loop.run_in_executor(None, song_video_dl)
-                return f"downloads/{title}.mp4", True
+                return await loop.run_in_executor(None, song_video_dl), True
             elif songaudio:
-                await loop.run_in_executor(None, song_audio_dl)
-                return f"downloads/{title}.mp3", True
+                return await loop.run_in_executor(None, song_audio_dl), True
             elif video:
-                downloaded_file = await self._download_video_from_api(link)
+                downloaded_file = await self._download_from_api(link, download_mode="video")
                 if downloaded_file:
                     return downloaded_file, True
+                logger.info("Falling back to cookie-based video download")
                 if await is_on_off(1):
                     return await loop.run_in_executor(None, video_dl), True
                 else:
@@ -527,9 +490,10 @@ class YouTubeAPI:
                         return None, False
                     return await loop.run_in_executor(None, video_dl), True
             else:
-                downloaded_file = await self._download_audio_from_api(link)
+                downloaded_file = await self._download_from_api(link, download_mode="audio")
                 if downloaded_file:
                     return downloaded_file, True
+                logger.info("Falling back to cookie-based audio download")
                 return await loop.run_in_executor(None, audio_dl), True
         except Exception as e:
             logger.error(f"Download failed: {str(e)}")
