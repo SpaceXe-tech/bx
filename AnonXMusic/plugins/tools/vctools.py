@@ -6,14 +6,12 @@ import asyncio
 from AnonXMusic import app
 from AnonXMusic.core.call import Anony
 
-# Toggle VC notifications
+# Toggle VC join/leave notifications
 infovc_enabled = True
 
-# Command decorator
 def command(commands: Union[str, List[str]]):
     return filters.command(commands, prefixes=["/"])
 
-# Toggle VC join/leave notifications
 @app.on_message(command(["infovc"]))
 async def toggle_infovc(_, message: Message):
     global infovc_enabled
@@ -30,37 +28,36 @@ async def toggle_infovc(_, message: Message):
     else:
         await message.reply("⚙️ Usage: /infovc on or /infovc off")
 
-# Format join/leave message
+# Format message
 def format_user(user, action: str):
     full_name = user.first_name + (f" {user.last_name}" if user.last_name else "")
     return (
-        "**🎙️ Voice Chat Is Active — Where Are You?**\n"
-        "`#Join_Vc`\n"
+        "**🎙️ Voice Chat Update**\n"
         f"**👤 User**: [{full_name}](tg://user?id={user.id})\n"
         f"**🔗 Username**: @{user.username if user.username else 'N/A'}\n"
         f"**🎯 Action**: {action}"
     )
 
-# Handle VC join
-@Anony.on_participant_joined()
-async def on_participant_joined(_, chat_id: int, user):
+# Use on_participants_change instead of joined/left
+@Anony.on_participants_change()
+async def vc_participants_change(_, chat_id: int, joined: list, left: list):
     if not infovc_enabled:
         return
-    try:
-        msg = await app.send_message(chat_id, format_user(user.user, "Joined"))
-        await asyncio.sleep(5)
-        await msg.delete()
-    except Exception as e:
-        print(f"[VC JOIN ERROR] in {chat_id} — {e}")
 
-# Handle VC leave
-@Anony.on_participant_left()
-async def on_participant_left(_, chat_id: int, user):
-    if not infovc_enabled:
-        return
     try:
-        msg = await app.send_message(chat_id, format_user(user.user, "Left"))
-        await asyncio.sleep(5)
-        await msg.delete()
+        # Handle joins
+        for user in joined:
+            u = user.user
+            msg = await app.send_message(chat_id, format_user(u, "Joined"))
+            await asyncio.sleep(5)
+            await msg.delete()
+
+        # Handle leaves
+        for user in left:
+            u = user.user
+            msg = await app.send_message(chat_id, format_user(u, "Left"))
+            await asyncio.sleep(5)
+            await msg.delete()
+
     except Exception as e:
-        print(f"[VC LEAVE ERROR] in {chat_id} — {e}")
+        print(f"[VC PARTICIPANT ERROR] in {chat_id} — {e}")
