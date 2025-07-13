@@ -1,6 +1,5 @@
 import asyncio
 import shlex
-import os
 from typing import Tuple
 
 from git import Repo
@@ -31,17 +30,13 @@ def install_req(cmd: str) -> Tuple[str, str, int, int]:
 
 
 def git():
-    if not os.path.exists(".git"):
-        LOGGER(__name__).info("Skipping git setup: .git directory not found.")
-        return
-
-    REPO_LINK = config.UPSTREAM_REPO
+    REPO_LINK = "https://github.com/KEXI01/RX7"
     if config.GIT_TOKEN:
         GIT_USERNAME = REPO_LINK.split("com/")[1].split("/")[0]
         TEMP_REPO = REPO_LINK.split("https://")[1]
         UPSTREAM_REPO = f"https://{GIT_USERNAME}:{config.GIT_TOKEN}@{TEMP_REPO}"
     else:
-        UPSTREAM_REPO = config.UPSTREAM_REPO
+        UPSTREAM_REPO = REPO_LINK
     try:
         repo = Repo()
         LOGGER(__name__).info(f"Git Client Found [VPS DEPLOYER]")
@@ -63,7 +58,7 @@ def git():
         )
         repo.heads[config.UPSTREAM_BRANCH].checkout(True)
         try:
-            repo.create_remote("origin", config.UPSTREAM_REPO)
+            repo.create_remote("origin", UPSTREAM_REPO)
         except BaseException:
             pass
         nrs = repo.remote("origin")
