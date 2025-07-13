@@ -1,13 +1,10 @@
+# Use slim Debian-based Python image
 FROM python:3.10-slim-bullseye
 
-# Install required tools and ffmpeg
+# Install system dependencies: curl, gnupg, ffmpeg, git, nodejs
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl gnupg ffmpeg \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install Node.js 19
-RUN curl -fsSL https://deb.nodesource.com/setup_19.x | bash - \
+    curl gnupg ffmpeg git \
+    && curl -fsSL https://deb.nodesource.com/setup_19.x | bash - \
     && apt-get install -y nodejs \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
@@ -15,12 +12,12 @@ RUN curl -fsSL https://deb.nodesource.com/setup_19.x | bash - \
 # Set working directory
 WORKDIR /app
 
-# Copy project files
+# Copy bot source code into image
 COPY . /app/
 
-# Install Python requirements
+# Install Python dependencies
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
 
-# Default command
+# Default command to run the bot
 CMD ["python3", "-m", "AnonXMusic"]
