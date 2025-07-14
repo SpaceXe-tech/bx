@@ -149,6 +149,7 @@ class Call(PyTgCalls):
         except:
             pass
 
+    
     async def speedup_stream(self, chat_id: int, file_path, speed, playing):
         assistant = await group_assistant(self, chat_id)
         if str(speed) != "1.0":
@@ -190,15 +191,16 @@ class Call(PyTgCalls):
         stream = (
             MediaStream(
                 out,
-                AudioQuality.STUDIO,
-                VideoQuality.SD_480p,
-                additional_ffmpeg_parameters=f"-ss {played} -to {duration}",
+                audio_parameters=AudioQuality.HIGH,
+                video_parameters=VideoQuality.SD_480p,
+                ffmpeg_parameters=f"-ss {played} -to {duration}",
             )
             if playing[0]["streamtype"] == "video"
             else MediaStream(
                 out,
-                AudioQuality.STUDIO,
-                additional_ffmpeg_parameters=f"-ss {played} -to {duration}",
+                audio_parameters=AudioQuality.HIGH,
+                ffmpeg_parameters=f"-ss {played} -to {duration}",
+                video_flags=MediaStream.IGNORE,
             )
         )
         if str(db[chat_id][0]["file"]) == str(file_path):
@@ -259,15 +261,16 @@ class Call(PyTgCalls):
         stream = (
             MediaStream(
                 file_path,
-                AudioQuality.STUDIO,
-                VideoQuality.SD_480p,
-                additional_ffmpeg_parameters=f"-ss {to_seek} -to {duration}",
+                audio_parameters=AudioQuality.HIGH,
+                video_parameters=VideoQuality.SD_480p,
+                ffmpeg_parameters=f"-ss {to_seek} -to {duration}",
             )
             if mode == "video"
             else MediaStream(
                 file_path,
-                AudioQuality.STUDIO,
-                additional_ffmpeg_parameters=f"-ss {to_seek} -to {duration}",
+                audio_parameters=AudioQuality.HIGH,
+                ffmpeg_parameters=f"-ss {to_seek} -to {duration}",
+                video_flags=MediaStream.IGNORE,
             )
         )
         await assistant.change_stream(chat_id, stream)
