@@ -175,8 +175,8 @@ class YouTubeAPI:
             if result:
                 return result
             if attempt < retries - 1:
-                await asyncio.sleep(backoff * (2 ** attempt))
-                logger.info(f"Retrying API download, attempt {attempt + 2}")
+                await asyncio.sleep(backoff * (1 ** attempt))
+                logger.info(f"Retrying API download, attempt {attempt + 1}")
 
         logger.error(f"All API attempts failed for URL {link} with mode {download_mode}")
         return None
