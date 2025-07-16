@@ -34,7 +34,7 @@ COOKIES = getenv("COOKIES", None)
 
 UPSTREAM_REPO = getenv(
     "UPSTREAM_REPO",
-    "https://github.com/BillaSpace/RX7",
+    "https://github.com/SpaceXe-tech/bx",
 )
 UPSTREAM_BRANCH = getenv("UPSTREAM_BRANCH", "main")
 GIT_TOKEN = getenv(
