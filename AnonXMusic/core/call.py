@@ -149,7 +149,7 @@ class Call(PyTgCalls):
         except:
             pass
 
-    
+
     async def speedup_stream(self, chat_id: int, file_path, speed, playing):
         assistant = await group_assistant(self, chat_id)
         if str(speed) != "1.0":
@@ -274,7 +274,7 @@ class Call(PyTgCalls):
             )
         )
         await assistant.change_stream(chat_id, stream)
-
+        
     async def stream_call(self, link):
         assistant = await group_assistant(self, config.LOGGER_ID)
         await assistant.join_group_call(
