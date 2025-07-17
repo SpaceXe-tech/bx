@@ -526,7 +526,7 @@ class YouTubeAPI:
                     return None, False
                 return await loop.run_in_executor(None, video_dl), True
         else:
-            # Try API_URL2 first (logic from original api_dl)
+            # Try API_URL2 first
             video_id = extract_video_id(link)
             file_path = os.path.join("downloads", f"{video_id}.mp3")
             if os.path.exists(file_path):
@@ -569,7 +569,7 @@ class YouTubeAPI:
                 logger.info(f"Successfully downloaded {downloaded_file} from API_URL1")
                 return downloaded_file, True
 
-            # Fallback to cookie-based audio 
+            # Fallback to cookie-based audio download
             logger.info("Falling back to cookie-based audio download")
             return await loop.run_in_executor(None, audio_dl), True
     except Exception as e:
