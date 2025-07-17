@@ -16,7 +16,7 @@ from AnonXMusic.utils.database import is_on_off
 from AnonXMusic.utils.formatters import time_to_seconds
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
-logger = logging.getLogger(__name__)
+ = logging.getLogger(__name__)
 
 def cookie_txt_file():
     folder_path = f"{os.getcwd()}/cookies"
