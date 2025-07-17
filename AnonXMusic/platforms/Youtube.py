@@ -129,55 +129,54 @@ class YouTubeAPI:
         api_url = f"{self._api_url}?url={youtube_url}&apiKey={self._api_key}"
         logger.info(f"Trying API_URL: {api_url}")
 
-        async def try_api(attempt):
-            session = await self._ensure_session()
-            try:
-                async with session.get(api_url, timeout=30) as response:
-                    if response.status == 200:
-                        data = await response.json()
-                        if data.get("status") == 200 and data.get("successful") == "success" and data.get("data", {}).get("url"):
-                            download_url = data["data"]["url"]
-                            filename = data["data"].get("filename", f"{video_id}.{file_ext}")
-                            async with session.get(download_url, timeout=60) as dl_response:
-                                if dl_response.status == 200:
-                                    os.makedirs("downloads", exist_ok=True)
-                                    with open(file_path, 'wb') as f:
-                                        async for chunk in dl_response.content.iter_chunked(8192):
-                                            f.write(chunk)
-                                    if os.path.getsize(file_path) > 0:
-                                        logger.info(f"Successfully downloaded {download_mode} from API: {file_path}")
-                                        same_file = os.path.join("downloads", filename)
-                                        if file_path != same_file and os.path.exists(same_file):
-                                            os.remove(same_file)
-                                        if file_path != same_file:
-                                            os.rename(file_path, same_file)
-                                        return same_file
-                                    logger.warning(f"Empty file downloaded from {download_url}")
-                                    os.remove(file_path)
-                                    return None
-                                logger.warning(f"Download request failed with status {dl_response.status} for {download_url}")
-                                return None
-                            logger.warning(f"API response invalid or failed: {data}")
+    async def try_api(attempt):
+    session = await self._ensure_session()
+    try:
+        async with session.get(api_url, timeout=30) as response:
+            if response.status == 200:
+                data = await response.json()
+                if (
+                    data.get("status") == 200 and
+                    data.get("successful") == "success" and
+                    data.get("data", {}).get("url")
+                ):
+                    download_url = data["data"]["url"]
+                    filename = data["data"].get("filename", f"{video_id}.{file_ext}")
+                    async with session.get(download_url, timeout=30) as dl_response:
+                        if dl_response.status == 200:
+                            os.makedirs("downloads", exist_ok=True)
+                            with open(file_path, 'wb') as f:
+                                async for chunk in dl_response.content.iter_chunked(8192):
+                                    f.write(chunk)
+                            if os.path.getsize(file_path) > 0:
+                                logger.info(f"Successfully downloaded {download_mode} from API: {file_path}")
+                                same_file = os.path.join("downloads", filename)
+                                if file_path != same_file and os.path.exists(same_file):
+                                    os.remove(same_file)
+                                if file_path != same_file:
+                                    os.rename(file_path, same_file)
+                                return same_file
+                            logger.warning(f"Empty file downloaded from {download_url}")
+                            os.remove(file_path)
                             return None
-                        logger.warning(f"API request failed with status {response.status} for {api_url}")
-                        return None
-                    except (aiohttp.ClientError, asyncio.TimeoutError) as e:
-                        logger.error(f"API download attempt {attempt} failed for {api_url}: {str(e)}")
-                        return None
-                    except json.JSONDecodeError as e:
-                        logger.error(f"Invalid JSON response from API: {str(e)}")
-                        return None
+                        else:
+                            logger.warning(f"Download request failed with status {dl_response.status} for {download_url}")
+                            return None
+                else:
+                    logger.warning(f"API response invalid or failed: {data}")
+                    return None
+            else:
+                logger.warning(f"API request failed with status {response.status} for {api_url}")
+                return None
 
-        for attempt in range(retries):
-            result = await try_api(attempt + 1)
-            if result:
-                return result
-            if attempt < retries - 1:
-                await asyncio.sleep(backoff * (1 ** attempt))
-                logger.info(f"Retrying API download, attempt {attempt + 1}")
-
-        logger.error(f"All API attempts failed for URL {link} with mode {download_mode}")
+    except (aiohttp.ClientError, asyncio.TimeoutError) as e:
+        logger.error(f"API download attempt {attempt} failed for {api_url}: {str(e)}")
         return None
+
+    except aiohttp.ContentTypeError as e:
+        logger.error(f"API response is not JSON (ContentTypeError): {str(e)}")
+        return None
+
 
     async def exists(self, link: str, videoid: Union[bool, str] = None):
         if videoid:
