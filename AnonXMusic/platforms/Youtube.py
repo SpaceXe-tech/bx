@@ -5,8 +5,10 @@ import json
 import glob
 import random
 import yt_dlp
+import time
 import aiohttp
-from config import API_URL1, API_KEY
+import requests
+from config import API_URL1, API_URL2, API_KEY
 from typing import Union, Tuple, Optional
 from pyrogram.enums import MessageEntityType
 from pyrogram.types import Message
@@ -16,6 +18,75 @@ from AnonXMusic.utils.formatters import time_to_seconds
 from .. import LOGGER
 
 logger = LOGGER(__name__)
+
+def extract_video_id(link: str) -> str:
+    """
+    Extracts the video ID from a variety of YouTube links.
+    Supports full, shortened, and playlist URLs.
+    """
+    # Regular expression to match different YouTube link formats
+    patterns = [
+        r'youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=)([0-9A-Za-z_-]{11})',  # youtube.com/watch?v= or youtube.com/embed/
+        r'youtu\.be\/([0-9A-Za-z_-]{11})',  # youtu.be/short link
+        r'youtube\.com\/(?:playlist\?list=[^&]+&v=|v\/)([0-9A-Za-z_-]{11})',  # youtube.com/playlist?list= and youtube.com/v/
+        r'youtube\.com\/(?:.*\?v=|.*\/)([0-9A-Za-z_-]{11})'  # youtube.com/watch?v= with additional query parameters
+    ]
+
+    for pattern in patterns:
+        match = re.search(pattern, link)
+        if match:
+            return match.group(1)
+
+    raise ValueError("Invalid YouTube link provided.")
+
+
+def api_dl2(youtube_url: str) -> str:
+    try:
+        # Step 1: Call API to get metadata and download links
+        response = requests.get(f"{API_URL2}?url=https://www.youtube.com/watch?v={video_id}", timeout=30)
+        data = response.json()
+
+        if not data.get("success"):
+            print("API_URL2 returned failure status.")
+            return None
+
+        video_id = data.get("videoId")
+        file_path = os.path.join("downloads", f"{video_id}.mp3")
+
+        # Step 2: Return if already downloaded
+        if os.path.exists(file_path):
+            print(f"{file_path} already exists. Skipping download.")
+            return file_path
+
+        # Step 3: Create downloads folder if not exists
+        os.makedirs("downloads", exist_ok=True)
+
+        # Step 4: Try downloading from directLink
+        for url in [data.get("directLink"), data.get("downloads")]:
+            if not url:
+                continue
+            try:
+                print(f"Trying download from API_URL2: {url}")
+                with requests.get(url, stream=True, timeout=30) as download_response:
+                    if download_response.status_code == 200:
+                        with open(file_path, "wb") as f:
+                            for chunk in download_response.iter_content(chunk_size=8192):
+                                if chunk:
+                                    f.write(chunk)
+                        print(f"Downloaded {file_path}")
+                        return file_path
+                    else:
+                        print(f"Failed with status {download_response.status_code}")
+            except requests.RequestException as e:
+                print(f"Download error from {url}: {e}")
+
+        print("All download attempts failed.")
+        return None
+
+    except Exception as e:
+        print(f"Unexpected error during API call or download: {e}")
+        return None
+
 
 def cookie_txt_file():
     folder_path = f"{os.getcwd()}/cookies"
