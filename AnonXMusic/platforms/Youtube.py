@@ -124,7 +124,6 @@ class YouTubeAPI:
     video_id = match.group(1)
     file_ext = "mp3" if download_mode == "audio" else "mp4"
     file_path = os.path.join("downloads", f"{video_id}.{file_ext}")
-
     if os.path.exists(file_path):
         logger.info(f"File {file_path} already exists. Skipping download.")
         return file_path
