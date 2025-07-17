@@ -38,9 +38,7 @@ def extract_video_id(link: str) -> str:
             return match.group(1)
 
     raise ValueError("Invalid YouTube link provided.")
-
-
-def api_dl2(youtube_url: str) -> str:
+def api_dl(youtube_url: str) -> str:
     try:
         # Step 1: Call API to get metadata and download links
         response = requests.get(f"{API_URL2}?url=https://www.youtube.com/watch?v={video_id}", timeout=30)
