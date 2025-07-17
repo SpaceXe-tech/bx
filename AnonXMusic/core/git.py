@@ -30,16 +30,16 @@ def install_req(cmd: str) -> Tuple[str, str, int, int]:
 
 
 def git():
-    REPO_LINK = "https://github.com/KEXI01/RX7"
+    REPO_LINK = config.UPSTREAM_REPO
     if config.GIT_TOKEN:
         GIT_USERNAME = REPO_LINK.split("com/")[1].split("/")[0]
         TEMP_REPO = REPO_LINK.split("https://")[1]
         UPSTREAM_REPO = f"https://{GIT_USERNAME}:{config.GIT_TOKEN}@{TEMP_REPO}"
     else:
-        UPSTREAM_REPO = REPO_LINK
+        UPSTREAM_REPO = config.UPSTREAM_REPO
     try:
         repo = Repo()
-        LOGGER(__name__).info(f"Git Client Found [VPS DEPLOYER]")
+        LOGGER(__name__).info(f"[+] Git client located. Initializing VPS deployment process..")
     except GitCommandError:
         LOGGER(__name__).info(f"Invalid Git Command")
     except InvalidGitRepositoryError:
@@ -58,7 +58,7 @@ def git():
         )
         repo.heads[config.UPSTREAM_BRANCH].checkout(True)
         try:
-            repo.create_remote("origin", UPSTREAM_REPO)
+            repo.create_remote("origin", config.UPSTREAM_REPO)
         except BaseException:
             pass
         nrs = repo.remote("origin")
