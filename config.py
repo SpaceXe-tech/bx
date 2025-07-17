@@ -92,6 +92,7 @@ SPOTIFY_PLAYLIST_IMG_URL = "https://graph.org/file/4491c4c570d9ccb1a19d0-1fb0835
 
 # Add API_URL1 and API_URL2 loaded from .env
 API_URL1 = getenv("API_URL1", None)
+API_URL2 = getenv("API_URL2", None)
 API_KEY = getenv("API_KEY", None)
 
 def time_to_seconds(string):
