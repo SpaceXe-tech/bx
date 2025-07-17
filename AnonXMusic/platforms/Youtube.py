@@ -89,6 +89,23 @@ class YouTubeAPI:
         self._api_key = API_KEY
         self._session = None
 
+    def extract_video_id(self, link: str) -> str:
+        """
+        Extracts the video ID from a variety of YouTube links.
+        Supports full, shortened, and playlist URLs.
+        """
+        patterns = [
+            r'youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=)([0-9A-Za-z_-]{11})',
+            r'youtu\.be\/([0-9A-Za-z_-]{11})',
+            r'youtube\.com\/(?:playlist\?list=[^&]+&v=|v\/)([0-9A-Za-z_-]{11})',
+            r'youtube\.com\/(?:.*\?v=|.*\/)([0-9A-Za-z_-]{11})'
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, link)
+            if match:
+                return match.group(1)
+        raise ValueError("Invalid YouTube link provided.")
+
     async def _ensure_session(self):
         if self._session is None or self._session.closed:
             self._session = aiohttp.ClientSession(
