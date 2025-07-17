@@ -1,21 +1,25 @@
 import os
 import asyncio
+
 import re
 import json
 import glob
 import random
+
 import yt_dlp
 import time
 import aiohttp
 import requests
+
+from .. import LOGGER
 from config import API_URL1, API_URL2, API_KEY
 from typing import Union, Tuple, Optional
+
 from pyrogram.enums import MessageEntityType
 from pyrogram.types import Message
 from youtubesearchpython.__future__ import VideosSearch
 from AnonXMusic.utils.database import is_on_off
 from AnonXMusic.utils.formatters import time_to_seconds
-from .. import LOGGER
 
 logger = LOGGER(__name__)
 
@@ -38,53 +42,7 @@ def extract_video_id(link: str) -> str:
             return match.group(1)
 
     raise ValueError("Invalid YouTube link provided.")
-def api_dl(youtube_url: str) -> str:
-    try:
-        # Step 1: Call API to get metadata and download links
-        response = requests.get(f"{API_URL2}?url=https://www.youtube.com/watch?v={video_id}", timeout=30)
-        data = response.json()
-
-        if not data.get("success"):
-            print("API_URL2 returned failure status.")
-            return None
-
-        video_id = data.get("videoId")
-        file_path = os.path.join("downloads", f"{video_id}.mp3")
-
-        # Step 2: Return if already downloaded
-        if os.path.exists(file_path):
-            print(f"{file_path} already exists. Skipping download.")
-            return file_path
-
-        # Step 3: Create downloads folder if not exists
-        os.makedirs("downloads", exist_ok=True)
-
-        # Step 4: Try downloading from directLink
-        for url in [data.get("directLink"), data.get("downloads")]:
-            if not url:
-                continue
-            try:
-                print(f"Trying download from API_URL2: {url}")
-                with requests.get(url, stream=True, timeout=30) as download_response:
-                    if download_response.status_code == 200:
-                        with open(file_path, "wb") as f:
-                            for chunk in download_response.iter_content(chunk_size=8192):
-                                if chunk:
-                                    f.write(chunk)
-                        print(f"Downloaded {file_path}")
-                        return file_path
-                    else:
-                        print(f"Failed with status {download_response.status_code}")
-            except requests.RequestException as e:
-                print(f"Download error from {url}: {e}")
-
-        print("All download attempts failed.")
-        return None
-
-    except Exception as e:
-        print(f"Unexpected error during API call or download: {e}")
-        return None
-
+    
 
 def cookie_txt_file():
     folder_path = f"{os.getcwd()}/cookies"
@@ -452,127 +410,168 @@ class YouTubeAPI:
         return title, duration_min, thumbnail, vidid
 
     async def download(
-        self,
-        link: str,
-        mystic,
-        video: Union[bool, str] = None,
-        videoid: Union[bool, str] = None,
-        songaudio: Union[bool, str] = None,
-        songvideo: Union[bool, str] = None,
-        format_id: Union[bool, str] = None,
-        title: Union[bool, str] = None,
-    ) -> Tuple[Optional[str], bool]:
-        if videoid:
-            link = self.base + link
-        if "&" in link:
-            link = link.split("&")[0]
-        loop = asyncio.get_running_loop()
+    self,
+    link: str,
+    mystic,
+    video: Union[bool, str] = None,
+    videoid: Union[bool, str] = None,
+    songaudio: Union[bool, str] = None,
+    songvideo: Union[bool, str] = None,
+    format_id: Union[bool, str] = None,
+    title: Union[bool, str] = None,
+) -> Tuple[Optional[str], bool]:
+    if videoid:
+        link = self.base + link
+    if "&" in link:
+        link = link.split("&")[0]
+    loop = asyncio.get_running_loop()
 
-        def audio_dl():
-            ydl_optssx = {
-                "format": "bestaudio/best",
-                "outtmpl": "downloads/%(id)s.%(ext)s",
-                "geo_bypass": True,
-                "nocheckcertificate": True,
-                "quiet": True,
-                "cookiefile": cookie_txt_file(),
-                "no_warnings": True,
-            }
-            x = yt_dlp.YoutubeDL(ydl_optssx)
-            info = x.extract_info(link, download=False)
-            xyz = os.path.join("downloads", f"{info['id']}.{info['ext']}")
-            if os.path.exists(xyz):
-                return xyz
-            x.download([link])
+    def audio_dl():
+        ydl_optssx = {
+            "format": "bestaudio/best",
+            "outtmpl": "downloads/%(id)s.%(ext)s",
+            "geo_bypass": True,
+            "nocheckcertificate": True,
+            "quiet": True,
+            "cookiefile": cookie_txt_file(),
+            "no_warnings": True,
+        }
+        x = yt_dlp.YoutubeDL(ydl_optssx)
+        info = x.extract_info(link, download=False)
+        xyz = os.path.join("downloads", f"{info['id']}.{info['ext']}")
+        if os.path.exists(xyz):
             return xyz
+        x.download([link])
+        return xyz
 
-        def video_dl():
-            ydl_optssx = {
-                "format": "(bestvideo[height<=?720][width<=?1280][ext=mp4])+(bestaudio[ext=m4a])",
-                "outtmpl": "downloads/%(id)s.%(ext)s",
-                "geo_bypass": True,
-                "nocheckcertificate": True,
-                "quiet": True,
-                "cookiefile": cookie_txt_file(),
-                "no_warnings": True,
-            }
-            x = yt_dlp.YoutubeDL(ydl_optssx)
-            info = x.extract_info(link, download=False)
-            xyz = os.path.join("downloads", f"{info['id']}.mp4")
-            if os.path.exists(xyz):
-                return xyz
-            x.download([link])
+    def video_dl():
+        ydl_optssx = {
+            "format": "(bestvideo[height<=?720][width<=?1280][ext=mp4])+(bestaudio[ext=m4a])",
+            "outtmpl": "downloads/%(id)s.%(ext)s",
+            "geo_bypass": True,
+            "nocheckcertificate": True,
+            "quiet": True,
+            "cookiefile": cookie_txt_file(),
+            "no_warnings": True,
+        }
+        x = yt_dlp.YoutubeDL(ydl_optssx)
+        info = x.extract_info(link, download=False)
+        xyz = os.path.join("downloads", f"{info['id']}.mp4")
+        if os.path.exists(xyz):
             return xyz
+        x.download([link])
+        return xyz
 
-        def song_video_dl():
-            formats = f"{format_id}+140"
-            fpath = f"downloads/{title}"
-            ydl_optssx = {
-                "format": formats,
-                "outtmpl": fpath,
-                "geo_bypass": True,
-                "nocheckcertificate": True,
-                "quiet": True,
-                "no_warnings": True,
-                "cookiefile": cookie_txt_file(),
-                "prefer_ffmpeg": True,
-                "merge_output_format": "mp4",
-            }
-            x = yt_dlp.YoutubeDL(ydl_optssx)
-            x.download([link])
-            return f"downloads/{title}.mp4"
+    def song_video_dl():
+        formats = f"{format_id}+140"
+        fpath = f"downloads/{title}"
+        ydl_optssx = {
+            "format": formats,
+            "outtmpl": fpath,
+            "geo_bypass": True,
+            "nocheckcertificate": True,
+            "quiet": True,
+            "no_warnings": True,
+            "cookiefile": cookie_txt_file(),
+            "prefer_ffmpeg": True,
+            "merge_output_format": "mp4",
+        }
+        x = yt_dlp.YoutubeDL(ydl_optssx)
+        x.download([link])
+        return f"downloads/{title}.mp4"
 
-        def song_audio_dl():
-            fpath = f"downloads/{title}.%(ext)s"
-            ydl_optssx = {
-                "format": format_id,
-                "outtmpl": fpath,
-                "geo_bypass": True,
-                "nocheckcertificate": True,
-                "quiet": True,
-                "no_warnings": True,
-                "cookiefile": cookie_txt_file(),
-                "prefer_ffmpeg": True,
-                "postprocessors": [
-                    {
-                        "key": "FFmpegExtractAudio",
-                        "preferredcodec": "opus",
-                        "preferredquality": "192",
-                    }
-                ],
-            }
-            x = yt_dlp.YoutubeDL(ydl_optssx)
-            x.download([link])
-            return f"downloads/{title}.mp3"
+    def song_audio_dl():
+        fpath = f"downloads/{title}.%(ext)s"
+        ydl_optssx = {
+            "format": format_id,
+            "outtmpl": fpath,
+            "geo_bypass": True,
+            "nocheckcertificate": True,
+            "quiet": True,
+            "no_warnings": True,
+            "cookiefile": cookie_txt_file(),
+            "prefer_ffmpeg": True,
+            "postprocessors": [
+                {
+                    "key": "FFmpegExtractAudio",
+                    "preferredcodec": "opus",
+                    "preferredquality": "192",
+                }
+            ],
+        }
+        x = yt_dlp.YoutubeDL(ydl_optssx)
+        x.download([link])
+        return f"downloads/{title}.mp3"
 
-        try:
-            if songvideo:
-                return await loop.run_in_executor(None, song_video_dl), True
-            elif songaudio:
-                return await loop.run_in_executor(None, song_audio_dl), True
-            elif video:
-                downloaded_file = await self._download_from_api(link, download_mode="video")
-                if downloaded_file:
-                    return downloaded_file, True
-                logger.info("Falling back to cookie-based video download")
-                if await is_on_off(1):
-                    return await loop.run_in_executor(None, video_dl), True
-                else:
-                    file_size = await check_file_size(link)
-                    if not file_size:
-                        logger.error("Could not determine file size.")
-                        return None, False
-                    total_size_mb = file_size / (1024 * 1024)
-                    if total_size_mb > 250:
-                        logger.warning(f"File size {total_size_mb:.2f} MB exceeds the 250MB limit.")
-                        return None, False
-                    return await loop.run_in_executor(None, video_dl), True
+    try:
+        if songvideo:
+            return await loop.run_in_executor(None, song_video_dl), True
+        elif songaudio:
+            return await loop.run_in_executor(None, song_audio_dl), True
+        elif video:
+            downloaded_file = await self._download_from_api(link, download_mode="video")
+            if downloaded_file:
+                return downloaded_file, True
+            logger.info("Falling back to cookie-based video download")
+            if await is_on_off(1):
+                return await loop.run_in_executor(None, video_dl), True
             else:
-                downloaded_file = await self._download_from_api(link, download_mode="audio")
-                if downloaded_file:
-                    return downloaded_file, True
-                logger.info("Falling back to cookie-based audio download")
-                return await loop.run_in_executor(None, audio_dl), True
-        except Exception as e:
-            logger.error(f"Download failed: {str(e)}")
-            return None, False
+                file_size = await check_file_size(link)
+                if not file_size:
+                    logger.error("Could not determine file size.")
+                    return None, False
+                total_size_mb = file_size / (1024 * 1024)
+                if total_size_mb > 250:
+                    logger.warning(f"File size {total_size_mb:.2f} MB exceeds the 250MB limit.")
+                    return None, False
+                return await loop.run_in_executor(None, video_dl), True
+        else:
+            # Try API_URL2 first (logic from original api_dl)
+            video_id = extract_video_id(link)
+            file_path = os.path.join("downloads", f"{video_id}.mp3")
+            if os.path.exists(file_path):
+                logger.info(f"{file_path} already exists. Skipping download.")
+                return file_path, True
+
+            os.makedirs("downloads", exist_ok=True)
+            try:
+                logger.info(f"Trying download with API_URL2 for video ID: {video_id}")
+                response = requests.get(f"{API_URL2}?url=https://www.youtube.com/watch?v={video_id}", timeout=30)
+                data = response.json()
+
+                if data.get("success"):
+                    for url in [data.get("directLink"), data.get("downloads")]:
+                        if not url:
+                            continue
+                        try:
+                            logger.info(f"Attempting download from API_URL2: {url}")
+                            with requests.get(url, stream=True, timeout=30) as download_response:
+                                if download_response.status_code == 200:
+                                    with open(file_path, "wb") as f:
+                                        for chunk in download_response.iter_content(chunk_size=8192):
+                                            if chunk:
+                                                f.write(chunk)
+                                    logger.info(f"Successfully downloaded {file_path} from API_URL2")
+                                    return file_path, True
+                                else:
+                                    logger.warning(f"Download failed with status {download_response.status_code}")
+                        except requests.RequestException as e:
+                            logger.error(f"Download error from {url}: {e}")
+                else:
+                    logger.warning("API_URL2 returned failure status.")
+            except Exception as e:
+                logger.error(f"Error with API_URL2: {e}")
+
+            # Fallback to API_URL1
+            logger.info("Falling back to API_URL1")
+            downloaded_file = await self._download_from_api(link, download_mode="audio")
+            if downloaded_file:
+                logger.info(f"Successfully downloaded {downloaded_file} from API_URL1")
+                return downloaded_file, True
+
+            # Fallback to cookie-based audio 
+            logger.info("Falling back to cookie-based audio download")
+            return await loop.run_in_executor(None, audio_dl), True
+    except Exception as e:
+        logger.error(f"Download failed: {str(e)}")
+        return None, False
