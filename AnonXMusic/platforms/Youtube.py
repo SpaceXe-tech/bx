@@ -410,21 +410,19 @@ class YouTubeAPI:
         return title, duration_min, thumbnail, vidid
 
     async def download(
-    self,
-    link: str,
-    mystic,
-    video: Union[bool, str] = None,
-    videoid: Union[bool, str] = None,
-    songaudio: Union[bool, str] = None,
-    songvideo: Union[bool, str] = None,
-    format_id: Union[bool, str] = None,
-    title: Union[bool, str] = None,
-) -> Tuple[Optional[str], bool]:
-    if videoid:
-        link = self.base + link
-    if "&" in link:
-        link = link.split("&")[0]
-    loop = asyncio.get_running_loop()
+        self,
+        link: str,
+        mystic,
+        video: Union[bool, str] = None,
+        videoid: Union[bool, str] = None,
+        songaudio: Union[bool, str] = None,
+        songvideo: Union[bool, str] = None,
+        format_id: Union[bool, str] = None,
+        title: Union[bool, str] = None,
+    ) -> str:
+        if videoid:
+            link = self.base + link
+        loop = asyncio.get_running_loop()
 
     def audio_dl():
         ydl_optssx = {
