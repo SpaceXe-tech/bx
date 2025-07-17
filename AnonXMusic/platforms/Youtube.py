@@ -4,7 +4,6 @@ import re
 import json
 import glob
 import random
-import logging
 import yt_dlp
 import aiohttp
 from config import API_URL1, API_KEY
@@ -14,9 +13,9 @@ from pyrogram.types import Message
 from youtubesearchpython.__future__ import VideosSearch
 from AnonXMusic.utils.database import is_on_off
 from AnonXMusic.utils.formatters import time_to_seconds
+from .. import LOGGER
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
- = logging.getLogger(__name__)
+LOGGER = logger(__name__)
 
 def cookie_txt_file():
     folder_path = f"{os.getcwd()}/cookies"
