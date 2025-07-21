@@ -1,5 +1,4 @@
 import os
-import asyncio
 import re
 import json
 import glob
@@ -7,9 +6,11 @@ import random
 import yt_dlp
 import time
 import aiohttp
+import asyncio
+import aiofiles
 import requests
-from config import API_URL1, API_URL2, API_KEY
 from typing import Union, Tuple, Optional
+from config import API_URL1, API_URL2, API_KEY
 from pyrogram.enums import MessageEntityType
 from pyrogram.types import Message
 from youtubesearchpython.__future__ import VideosSearch
@@ -19,24 +20,25 @@ from .. import LOGGER
 
 logger = LOGGER(__name__)
 
+
 def cookie_txt_file():
-    folder_path = f"{os.getcwd()}/cookies"
-    filename = f"{os.getcwd()}/cookies/logs.csv"
-    txt_files = glob.glob(os.path.join(folder_path, '*.txt'))
+    folder_path = os.path.join(os.getcwd(), "cookies")
+    log_path = os.path.join(folder_path, "logs.csv")
+    txt_files = glob.glob(os.path.join(folder_path, "*.txt"))
     if not txt_files:
         raise FileNotFoundError("No .txt files found in the specified folder.")
     cookie_txt_file = random.choice(txt_files)
-    with open(filename, 'a') as file:
-        file.write(f'Choosen File : {cookie_txt_file}\n')
-    return f"cookies/{str(cookieTXT_file).split('/')[-1]}"
+    with open(log_path, 'a') as file:
+        file.write(f'Chosen File : {cookie_txt_file}\n')
+    return cookie_txt_file
+
 
 async def check_file_size(link):
     async def get_format_info(link):
         proc = await asyncio.create_subprocess_exec(
             "yt-dlp",
             "--cookies", cookie_txt_file(),
-            "-J",
-            link,
+            "-J", link,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE
         )
@@ -60,8 +62,8 @@ async def check_file_size(link):
     if not formats:
         logger.error("No formats found.")
         return None
-    total_size = parse_size(formats)
-    return total_size
+    return parse_size(formats)
+
 
 async def shell_cmd(cmd):
     proc = await asyncio.create_subprocess_shell(
@@ -70,12 +72,8 @@ async def shell_cmd(cmd):
         stderr=asyncio.subprocess.PIPE,
     )
     out, errorz = await proc.communicate()
-    if errorz:
-        if "unavailable videos are hidden" in (errorz.decode("utf-8")).lower():
-            return out.decode("utf-8")
-        else:
-            return errorz.decode("utf-8")
-    return out.decode("utf-8")
+    return out.decode("utf-8") if out else errorz.decode("utf-8")
+
 
 class YouTubeAPI:
     def __init__(self):
@@ -90,10 +88,6 @@ class YouTubeAPI:
         self._session = None
 
     def extract_video_id(self, link: str) -> str:
-        """
-        Extracts the video ID from a variety of YouTube links.
-        Supports full, shortened, and playlist URLs.
-        """
         patterns = [
             r'youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=)([0-9A-Za-z_-]{11})',
             r'youtu\.be\/([0-9A-Za-z_-]{11})',
@@ -175,9 +169,13 @@ class YouTubeAPI:
                                 return None
 
                             os.makedirs("downloads", exist_ok=True)
-                            with open(file_path, 'wb') as f:
-                                async for chunk in dl_response.content.iter_chunked(8192):
-                                    f.write(chunk)
+                            try:
+                                async with aiofiles.open(file_path, 'wb') as f:
+                                    async for chunk in dl_response.content.iter_chunked(8192):
+                                        await f.write(chunk)
+                            except Exception as e:
+                                logger.warning(f"Exception during download write: {e}")
+                                return None
 
                             if os.path.getsize(file_path) > 0:
                                 logger.info(f"Successfully downloaded {download_mode} from API: {file_path}")
@@ -213,10 +211,7 @@ class YouTubeAPI:
     async def exists(self, link: str, videoid: Union[bool, str] = None):
         if videoid:
             link = self.base + link
-        if re.search(self.regex, link):
-            return True
-        else:
-            return False
+        return bool(re.search(self.regex, link))
 
     async def url(self, message_1: Message) -> Union[str, None]:
         messages = [message_1]
@@ -242,7 +237,6 @@ class YouTubeAPI:
             return None
         return text[offset: offset + length]
 
-    async def details(self, link: str, videoid: Union[bool, str] = None):
         if videoid:
             link = self.base + link
         if "&" in link:
@@ -396,7 +390,7 @@ class YouTubeAPI:
         vidid = result[query_type]["id"]
         thumbnail = result[query_type]["thumbnails"][0]["url"].split("?")[0]
         return title, duration_min, thumbnail, vidid
-
+    
     async def download(
         self,
         link: str,
@@ -514,7 +508,7 @@ class YouTubeAPI:
                         return None, False
                     return await loop.run_in_executor(None, video_dl), True
             else:
-                # Try API_URL2 first (logic from original api_dl)
+                # Try API_URL2 first
                 video_id = self.extract_video_id(link)
                 file_path = os.path.join("downloads", f"{video_id}.mp3")
                 if os.path.exists(file_path):
