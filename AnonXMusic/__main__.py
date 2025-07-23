@@ -13,7 +13,7 @@ from AnonXMusic.utils.database import get_banned_users, get_gbanned
 from config import BANNED_USERS
 
 # Import the restart task
-
+from AnonXMusic.plugins.sudo.autoboot import auto_restart, auto_restart_task
 
 async def init():
     if (
