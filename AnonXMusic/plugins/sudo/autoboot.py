@@ -37,7 +37,7 @@ async def auto_restart(minutes: int):
     await restart_bot()
 
 
-@app.on_message(filters.command("auto") & SUDOERS)
+@app.on_message(filters.command("autoboot") & SUDOERS)
 async def start_auto_restart(_, message):
     global auto_restart_task
 
@@ -46,7 +46,7 @@ async def start_auto_restart(_, message):
         return
 
     if len(message.command) < 2 or not message.command[1].isdigit():
-        return await message.reply_text("<b>❌ Usage: /auto &lt;minutes&gt;</b>")
+        return await message.reply_text("<b>❌ Usage: /autoboot &lt;minutes&gt;</b>")
 
     minutes = int(message.command[1])
     if minutes < 1:
@@ -58,7 +58,7 @@ async def start_auto_restart(_, message):
     )
 
 
-@app.on_message(filters.command("stop_auto") & SUDOERS)
+@app.on_message(filters.command("sautoboot") & SUDOERS)
 async def stop_auto_restart(_, message):
     global auto_restart_task
 
@@ -67,3 +67,16 @@ async def stop_auto_restart(_, message):
         auto_restart_task = None
         return await message.reply_text("<b>🛑 Auto-restart task has been stopped.</b>")
     await message.reply_text("<b>⚠️ No auto-restart task is currently running.</b>")
+
+
+@app.on_message(filters.command("rboot") & SUDOERS)
+async def reset_boot(_, message):
+    global auto_restart_task
+
+    if auto_restart_task and not auto_restart_task.done():
+        auto_restart_task.cancel()
+
+    auto_restart_task = asyncio.create_task(auto_restart(120))
+    await message.reply_text(
+        "<b>🔄 Restart timer has been reset.\n\n⏳ Bot will now restart after 2 hours (default).</b>"
+    )
