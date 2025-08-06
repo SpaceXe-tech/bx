@@ -510,11 +510,9 @@ class YouTubeAPI:
             if songvideo:
                 result = await loop.run_in_executor(None, song_video_dl)
                 return result, result is not None
-            
             elif songaudio:
                 result = await loop.run_in_executor(None, song_audio_dl)
                 return result, result is not None
-            
             elif video:
                 # Try APIs first for video
                 downloaded_file = await download_with_api1(video_id, "video")
@@ -540,18 +538,6 @@ class YouTubeAPI:
                     
                     result = await loop.run_in_executor(None, video_dl)
                     return result, result is not None
-                else:
-                    file_size = await check_file_size(link)
-                    if not file_size:
-                        return None, False
-                    
-                    total_size_mb = file_size / (1024 * 1024)
-                    if total_size_mb > 250:
-                        return None, False
-                    
-                    result = await loop.run_in_executor(None, video_dl)
-                    return result, result is not None
-            
             else:  # Audio download
                 # Check if file already exists
                 file_path = os.path.join("downloads", f"{video_id}.mp3")
@@ -573,4 +559,4 @@ class YouTubeAPI:
                 return result, result is not None
                 
         except Exception:
-            return None, False 
+            return None, False
