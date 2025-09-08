@@ -58,7 +58,7 @@ async def init():
     # ✅ Start default 2-hour restart only if no manual task is running
     global auto_restart_task
     if not auto_restart_task or auto_restart_task.done():
-        auto_restart_task = asyncio.create_task(auto_restart(720))
+        auto_restart_task = asyncio.create_task(auto_restart(1440))
         LOGGER("AutoBoot").info("✅ Default auto-restart scheduled for every 12 hours.")
 
     await idle()
