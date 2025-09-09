@@ -24,7 +24,8 @@ from AnonXMusic.utils.logger import play_logs
 from AnonXMusic.utils.stream.stream import stream
 from config import BANNED_USERS, lyrical
 
-sticker_id = "CAACAgUAAxkBAAIBh2hv_aMEeoZud5r5J5L8xHtjxEngAAJ9EAACbT5ZVwsN4MpeAAEiMDYE"
+sticker_id = "CAACAgUAAxkBAAINvWjAb6tTIjz_7L3eyNVXOF-zg-JLAAJPDAACtYcQV6V1yMr2QhDYHgQ"
+
 
 @app.on_message(
     filters.command(
@@ -37,7 +38,8 @@ sticker_id = "CAACAgUAAxkBAAIBh2hv_aMEeoZud5r5J5L8xHtjxEngAAJ9EAACbT5ZVwsN4MpeAA
             "vplayforce",
             "cplayforce",
             "cvplayforce",
-        ]
+        ],
+        prefixes=["/", "!", "."],
     )
     & filters.group
     & ~BANNED_USERS
@@ -199,10 +201,10 @@ async def play_commnd(
                     mystic = await message.reply_text(_["play_3"])
                     return
                 streamtype = "youtube"
-                img = details["thumb"]
+                img = details.get("thumb", config.YOUTUBE_IMG_URL)
                 cap = _["play_10"].format(
-                    details["title"],
-                    details["duration_min"],
+                    details.get("title", "Unknown Title"),
+                    details.get("duration_min", "0:00"),
                 )
         elif await Spotify.valid(url):
             spotify = True
@@ -220,8 +222,8 @@ async def play_commnd(
                     mystic = await message.reply_text(_["play_3"])
                     return
                 streamtype = "spotify"
-                img = details["thumb"]
-                cap = _["play_10"].format(details["title"], details["duration_min"])
+                img = details.get("thumb", config.YOUTUBE_IMG_URL)
+                cap = _["play_10"].format(details.get("title", "Unknown"), details.get("duration_min", "0:00"))
             elif "playlist" in url:
                 try:
                     details, plist_id = await Spotify.playlist(url)
@@ -268,8 +270,8 @@ async def play_commnd(
                     mystic = await message.reply_text(_["play_3"])
                     return
                 streamtype = "youtube"
-                img = details["thumb"]
-                cap = _["play_10"].format(details["title"], details["duration_min"])
+                img = details.get("thumb", config.YOUTUBE_IMG_URL)
+                cap = _["play_10"].format(details.get("title", "Unknown Title"), details.get("duration_min", "0:00"))
             elif "playlist" in url:
                 spotify = True
                 try:
@@ -294,8 +296,8 @@ async def play_commnd(
                 mystic = await message.reply_text(_["play_3"])
                 return
             streamtype = "youtube"
-            img = details["thumb"]
-            cap = _["play_10"].format(details["title"], details["duration_min"])
+            img = details.get("thumb", config.YOUTUBE_IMG_URL)
+            cap = _["play_10"].format(details.get("title", "Unknown Title"), details.get("duration_min", "0:00"))
         elif await SoundCloud.valid(url):
             try:
                 details, track_path = await SoundCloud.download(url)
@@ -390,8 +392,8 @@ async def play_commnd(
         streamtype = "youtube"
     if str(playmode) == "Direct":
         if not plist_type:
-            if details["duration_min"]:
-                duration_sec = time_to_seconds(details["duration_min"])
+            if details.get("duration_min"):
+                duration_sec = time_to_seconds(details.get("duration_min"))
                 if duration_sec > config.DURATION_LIMIT:
                     await mystic.delete()
                     mystic = await message.reply_text(
@@ -458,6 +460,7 @@ async def play_commnd(
             return await play_logs(message, streamtype=f"Playlist : {plist_type}")
         else:
             if slider:
+                photo_url = details.get("thumb", config.YOUTUBE_IMG_URL)
                 buttons = slider_markup(
                     _,
                     track_id,
@@ -469,10 +472,10 @@ async def play_commnd(
                 )
                 await mystic.delete()
                 await message.reply_photo(
-                    photo=details["thumb"],
+                    photo=photo_url,
                     caption=_["play_10"].format(
-                        details["title"].title(),
-                        details["duration_min"],
+                        details.get("title", "Unknown Title").title(),
+                        details.get("duration_min", "0:00"),
                     ),
                     reply_markup=InlineKeyboardMarkup(buttons),
                 )
@@ -743,3 +746,4 @@ async def slider_queries(client, CallbackQuery, _):
         return await CallbackQuery.edit_message_media(
             media=med, reply_markup=InlineKeyboardMarkup(buttons)
         )
+
