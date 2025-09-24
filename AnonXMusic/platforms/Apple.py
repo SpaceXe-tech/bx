@@ -17,6 +17,7 @@ class AppleAPI:
     async def track(self, url, playid: Union[bool, str] = None):
         if playid:
             url = self.base + url
+
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as response:
                 if response.status != 200:
@@ -34,13 +35,16 @@ class AppleAPI:
             elif tag.get("name") == "twitter:audio:artist_name":
                 artist_name = tag.get("content")
 
+        # 🔹 Fallback: from URL
         if not track_name:
-            return False
+            try:
+                slug = url.split("/song/")[1].split("/")[0]
+                track_name = slug.replace("-", " ")
+            except Exception:
+                return False
 
-        # Build refined query
         search_query = f"{track_name} {artist_name}" if artist_name else track_name
 
-        # Search YouTube
         results = VideosSearch(search_query, limit=1)
         yt_result = (await results.next())["result"]
         if not yt_result:
@@ -73,11 +77,31 @@ class AppleAPI:
 
         for item in applelinks:
             try:
-                # Extract track slug cleanly
-                slug = (item["content"].split("album/")[1]).split("/")[0]
-                xx = slug.replace("-", " ")
+                track_url = item["content"]
+
+                # Try to get track name from slug
+                slug = track_url.split("/album/")[1].split("/")[0]
+                track_name = slug.replace("-", " ")
+
+                # Search on YouTube
+                search_query = track_name
+                yt_results = VideosSearch(search_query, limit=1)
+                yt_data = (await yt_results.next())["result"]
+
+                if yt_data:
+                    yt_info = yt_data[0]
+                    track_details = {
+                        "title": yt_info["title"],
+                        "link": yt_info["link"],
+                        "vidid": yt_info["id"],
+                        "duration_min": yt_info.get("duration"),
+                        "thumb": yt_info["thumbnails"][0]["url"].split("?")[0],
+                    }
+                    results.append(track_details)
+                else:
+                    results.append({"title": track_name, "link": None})
+
             except Exception:
-                xx = (item["content"].split("album/")[1]).split("/")[0]
-            results.append(xx)
+                continue
 
         return results, playlist_id
