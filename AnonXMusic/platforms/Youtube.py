@@ -47,7 +47,7 @@ async def download_with_api(video_id: str, download_mode: str = "audio") -> Opti
         if download_mode == "audio":
             params.update({"type": "audio", "format": "m4a"})
 
-        r = requests.get(API_URL2, params=params, timeout=TIMEOUT)
+        r = requests.get(API_URL, params=params, timeout=TIMEOUT)
         if r.status_code != 200:
             return None
 
