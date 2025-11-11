@@ -361,6 +361,7 @@ class YouTubeAPI:
                     "outtmpl": "downloads/%(id)s.%(ext)s",
                     "quiet": True,
                     "cookiefile": cookie_txt_file(),
+                    "concurrent_fragment_downloads": "32",
                     "no_warnings": True,
                 }
                 ydl = yt_dlp.YoutubeDL(opts)
@@ -382,6 +383,7 @@ class YouTubeAPI:
                     "outtmpl": "downloads/%(id)s.%(ext)s",
                     "quiet": True,
                     "cookiefile": cookie_txt_file(),
+                    "concurrent_fragment_downloads": "32",
                     "no_warnings": True,
                 }
                 ydl = yt_dlp.YoutubeDL(opts)
