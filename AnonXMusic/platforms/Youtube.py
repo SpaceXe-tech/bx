@@ -10,7 +10,7 @@ import asyncio
 import aiofiles
 import requests
 from typing import Union, Tuple, Optional, Dict, Any
-from config import API_URL2, API_KEY
+from config import API_URL
 from pyrogram.enums import MessageEntityType
 from pyrogram.types import Message
 from youtubesearchpython.__future__ import VideosSearch
@@ -32,8 +32,8 @@ def cookie_txt_file():
         raise FileNotFoundError("No .txt files found in cookies folder.")
     return random.choice(txt_files)
 
-async def download_with_api2(video_id: str, download_mode: str = "audio") -> Optional[str]:
-    """Simple API2 download"""
+async def download_with_api(video_id: str, download_mode: str = "audio") -> Optional[str]:
+    """Simple API download"""
     if not API_URL2:
         return None
     
@@ -443,8 +443,8 @@ class YouTubeAPI:
                 return result, result is not None
                 
             elif video:
-                # Try API2 first for video
-                api_result = await download_with_api2(video_id, "video")
+                # Try API first for video
+                api_result = await download_with_api(video_id, "video")
                 if api_result:
                     return api_result, True
                 
@@ -462,8 +462,8 @@ class YouTubeAPI:
                     if os.path.exists(existing_file) and os.path.getsize(existing_file) > 0:
                         return existing_file, True
                 
-                # Try API2 first
-                api_result = await download_with_api2(video_id, "audio")
+                # Try API first
+                api_result = await download_with_api(video_id, "audio")
                 if api_result:
                     return api_result, True
                 
