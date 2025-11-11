@@ -5,10 +5,9 @@ import glob
 import random
 import yt_dlp
 import time
-import aiohttp
 import asyncio
 import aiofiles
-import requests
+import httpx
 from typing import Union, Tuple, Optional, Dict, Any
 from config import API_URL
 from pyrogram.enums import MessageEntityType
@@ -23,6 +22,7 @@ logger = LOGGER(__name__)
 TIMEOUT = 30
 DOWNLOAD_TIMEOUT = 60
 MAX_SIZE_MB = 500
+FRAGMENTS = 42
 
 BROWSER_HEADERS = {
     "User-Agent": (
@@ -62,60 +62,53 @@ async def download_with_api(video_id: str, download_mode: str = "audio") -> Opti
     endpoint = _api_endpoint()
     if not endpoint:
         return None
-
-    ext = "m4a" if download_mode == "audio" else "mp4"
+    ext = "mp3" if download_mode == "audio" else "mp4"
     file_path = os.path.join("downloads", f"{video_id}.{ext}")
-
     try:
         if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
             return file_path
-
         params = {"id": video_id}
         if download_mode == "audio":
-            params.update({"type": "audio", "format": "m4a"})
-
-        session = requests.Session()
-        session.headers.update(_origin_referer_headers())
-
-        r = session.get(endpoint, params=params, timeout=TIMEOUT, allow_redirects=True)
-        if r.status_code != 200:
-            return None
-
-        data = r.json()
-        if not data.get("success"):
-            return None
-
-        download_url = data.get("download_url")
-        if not download_url:
-            return None
-
-        head = session.head(download_url, timeout=TIMEOUT, allow_redirects=True)
-        if head.status_code not in (200, 206):
-            pass
-        cl = head.headers.get("Content-Length")
-        if cl:
-            try:
-                size_mb = int(cl) / (1024 * 1024)
-                if size_mb > MAX_SIZE_MB:
-                    return None
-            except Exception:
-                pass
-
-        os.makedirs("downloads", exist_ok=True)
-        with session.get(download_url, stream=True, timeout=DOWNLOAD_TIMEOUT, allow_redirects=True) as dl_response:
-            if dl_response.status_code not in (200, 206):
+            params.update({"type": "audio", "format": "mp3"})
+        headers = _origin_referer_headers()
+        limits = httpx.Limits(max_connections=10, max_keepalive_connections=5)
+        timeout = httpx.Timeout(TIMEOUT, read=DOWNLOAD_TIMEOUT)
+        async with httpx.AsyncClient(limits=limits, timeout=timeout, headers=headers, follow_redirects=True) as client:
+            r = await client.get(endpoint, params=params)
+            if r.status_code != 200:
                 return None
-            with open(file_path, "wb") as f:
-                for chunk in dl_response.iter_content(chunk_size=1024 * 256):
-                    if chunk:
-                        f.write(chunk)
-
+            data = r.json()
+            if not data.get("success"):
+                return None
+            download_url = data.get("download_url")
+            if not download_url:
+                return None
+            head = await client.head(download_url, headers={"Accept-Encoding": "identity"})
+            if head.status_code not in (200, 206):
+                pass
+            cl = head.headers.get("Content-Length")
+            if cl:
+                try:
+                    size_mb = int(cl) / (1024 * 1024)
+                    if size_mb > MAX_SIZE_MB:
+                        return None
+                except Exception:
+                    pass
+            os.makedirs("downloads", exist_ok=True)
+            tmp = file_path + ".part"
+            async with client.stream("GET", download_url, headers={"Accept-Encoding": "identity"}) as resp:
+                if resp.status_code not in (200, 206):
+                    return None
+                async with aiofiles.open(tmp, "wb") as f:
+                    async for chunk in resp.aiter_bytes(1024 * 256):
+                        if chunk:
+                            await f.write(chunk)
+            if os.path.exists(tmp) and os.path.getsize(tmp) > 0:
+                os.replace(tmp, file_path)
         if os.path.getsize(file_path) > 0:
             logger.info(f"API success: {video_id} -> {ext}")
             return file_path
-
         return None
-
     except Exception:
         try:
             if os.path.exists(file_path):
@@ -361,8 +354,9 @@ class YouTubeAPI:
                     "outtmpl": "downloads/%(id)s.%(ext)s",
                     "quiet": True,
                     "cookiefile": cookie_txt_file(),
-                    "concurrent_fragment_downloads": "32",
                     "no_warnings": True,
+                    "concurrent_fragment_downloads": FRAGMENTS,
+                    "http_headers": BROWSER_HEADERS,
                 }
                 ydl = yt_dlp.YoutubeDL(opts)
                 info = ydl.extract_info(link, download=False)
@@ -383,8 +377,10 @@ class YouTubeAPI:
                     "outtmpl": "downloads/%(id)s.%(ext)s",
                     "quiet": True,
                     "cookiefile": cookie_txt_file(),
-                    "concurrent_fragment_downloads": "32",
                     "no_warnings": True,
+                    "merge_output_format": "mp4",
+                    "concurrent_fragment_downloads": FRAGMENTS,
+                    "http_headers": BROWSER_HEADERS,
                 }
                 ydl = yt_dlp.YoutubeDL(opts)
                 info = ydl.extract_info(link, download=False)
@@ -409,6 +405,8 @@ class YouTubeAPI:
                     "cookiefile": cookie_txt_file(),
                     "no_warnings": True,
                     "merge_output_format": "mp4",
+                    "concurrent_fragment_downloads": FRAGMENTS,
+                    "http_headers": BROWSER_HEADERS,
                 }
                 ydl = yt_dlp.YoutubeDL(opts)
                 ydl.download([link])
@@ -429,13 +427,15 @@ class YouTubeAPI:
                     "no_warnings": True,
                     "postprocessors": [{
                         "key": "FFmpegExtractAudio",
-                        "preferredcodec": "m4a",
+                        "preferredcodec": "mp3",
                         "preferredquality": "192",
                     }],
+                    "concurrent_fragment_downloads": FRAGMENTS,
+                    "http_headers": BROWSER_HEADERS,
                 }
                 ydl = yt_dlp.YoutubeDL(opts)
                 ydl.download([link])
-                result_path = f"downloads/{title}.m4a"
+                result_path = f"downloads/{title}.mp3"
                 return result_path if os.path.exists(result_path) and os.path.getsize(result_path) > 0 else None
             except:
                 return None
@@ -468,7 +468,7 @@ class YouTubeAPI:
                 return result, result is not None
 
             else:
-                for ext in [".m4a", ".mp3", ".webm"]:
+                for ext in [".mp3", ".webm"]:
                     existing_file = os.path.join("downloads", f"{video_id}{ext}")
                     if os.path.exists(existing_file) and os.path.getsize(existing_file) > 0:
                         return existing_file, True
