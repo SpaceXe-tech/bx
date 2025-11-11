@@ -33,48 +33,54 @@ def cookie_txt_file():
     return random.choice(txt_files)
 
 async def download_with_api(video_id: str, download_mode: str = "audio") -> Optional[str]:
-    """Simple API download"""
-    if not API_URL2:
+    if not API_URL:
         return None
-    
+
+    ext = "m4a" if download_mode == "audio" else "mp4"
+    file_path = os.path.join("downloads", f"{video_id}.{ext}")
+
     try:
-        file_ext = "mp3" if download_mode == "audio" else "mp4"
-        file_path = os.path.join("downloads", f"{video_id}.{file_ext}")
-        
         if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
             return file_path
-        
-        youtube_url = f"https://www.youtube.com/watch?v={video_id}"
-        format_param = "mp3" if download_mode == "audio" else "mp4"
-        api_url = f"{API_URL2}?url={youtube_url}&format={format_param}"
-        
-        response = requests.get(api_url, timeout=TIMEOUT)
-        if response.status_code != 200:
+
+        params = {"id": video_id}
+        if download_mode == "audio":
+            params.update({"type": "audio", "format": "m4a"})
+
+        r = requests.get(API_URL2, params=params, timeout=TIMEOUT)
+        if r.status_code != 200:
             return None
-        
-        data = response.json()
-        download_url = data.get("data", {}).get("download", {}).get("url")
+
+        data = r.json()
+        if not data.get("success"):
+            return None
+        download_url = data.get("download_url")
         if not download_url:
             return None
-        
+
         with requests.get(download_url, stream=True, timeout=DOWNLOAD_TIMEOUT) as dl_response:
             if dl_response.status_code != 200:
                 return None
-            
+
             os.makedirs("downloads", exist_ok=True)
             with open(file_path, "wb") as f:
                 for chunk in dl_response.iter_content(chunk_size=8192):
                     if chunk:
                         f.write(chunk)
-            
-            if os.path.getsize(file_path) > 0:
-                logger.info(f"API2 success: {video_id}")
-                return file_path
-        
+
+        if os.path.getsize(file_path) > 0:
+            logger.info(f"API success : {video_id} -> {ext}")
+            return file_path
+
         return None
+
     except Exception:
-        if os.path.exists(file_path):
-            os.remove(file_path)
+        # cleanup partial
+        try:
+            if os.path.exists(file_path):
+                os.remove(file_path)
+        except Exception:
+            pass
         return None
 
 class YouTubeAPI:
@@ -412,7 +418,7 @@ class YouTubeAPI:
                     "no_warnings": True,
                     "postprocessors": [{
                         "key": "FFmpegExtractAudio",
-                        "preferredcodec": "mp3",
+                        "preferredcodec": "m4a",
                         "preferredquality": "192",
                     }],
                 }
@@ -420,7 +426,7 @@ class YouTubeAPI:
                 ydl = yt_dlp.YoutubeDL(opts)
                 ydl.download([link])
                 
-                result_path = f"downloads/{title}.mp3"
+                result_path = f"downloads/{title}.m4a"
                 return result_path if os.path.exists(result_path) and os.path.getsize(result_path) > 0 else None
             except:
                 return None
