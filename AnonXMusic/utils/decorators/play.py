@@ -135,10 +135,7 @@ def PlayWrapper(command):
                 else:
                     if message.chat.username:
                         invitelink = message.chat.username
-                        try:
-                            await userbot.resolve_peer(invitelink)
-                        except:
-                            pass
+                        # Removed the problematic resolve_peer call here
                     else:
                         try:
                             invitelink = await app.export_chat_invite_link(chat_id)
@@ -156,7 +153,8 @@ def PlayWrapper(command):
                 myu = await message.reply_text(_["call_4"].format(app.mention))
                 try:
                     await asyncio.sleep(1)
-                    await userbot.join_chat(invitelink)
+                    # userbot can join with invite link or username
+                    await userbot.join_chat(invitelink) 
                 except InviteRequestSent:
                     try:
                         await app.approve_chat_join_request(chat_id, userbot.id)
@@ -175,8 +173,9 @@ def PlayWrapper(command):
 
                 links[chat_id] = invitelink
 
+                # Ensure resolve_peer is done on the chat ID after joining
                 try:
-                    await userbot.resolve_peer(chat_id)
+                    await userbot.resolve_peer(chat_id) 
                 except:
                     pass
 
