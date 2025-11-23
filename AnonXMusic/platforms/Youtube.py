@@ -72,7 +72,7 @@ async def download_with_api(video_id: str, download_mode: str = "audio") -> Opti
         if download_mode == "audio":
             params.update({"type": "audio", "format": "mp3"})
         headers = _origin_referer_headers()
-        limits = httpx.Limits(max_connections=10, max_keepalive_connections=5)
+        limits = httpx.Limits(max_connections=100, max_keepalive_connections=50)
         timeout = httpx.Timeout(TIMEOUT, read=DOWNLOAD_TIMEOUT)
         async with httpx.AsyncClient(limits=limits, timeout=timeout, headers=headers, follow_redirects=True) as client:
             r = await client.get(endpoint, params=params)
