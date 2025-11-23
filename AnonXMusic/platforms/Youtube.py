@@ -23,6 +23,7 @@ TIMEOUT = 30
 DOWNLOAD_TIMEOUT = 60
 MAX_SIZE_MB = 500
 FRAGMENTS = 42
+CHUNK_SIZE = 8 * 1024 * 1024
 
 BROWSER_HEADERS = {
     "User-Agent": (
@@ -100,7 +101,7 @@ async def download_with_api(video_id: str, download_mode: str = "audio") -> Opti
                 if resp.status_code not in (200, 206):
                     return None
                 async with aiofiles.open(tmp, "wb") as f:
-                    async for chunk in resp.aiter_bytes(1024 * 256):
+                    async for chunk in resp.aiter_bytes(CHUNK_SIZE):
                         if chunk:
                             await f.write(chunk)
             if os.path.exists(tmp) and os.path.getsize(tmp) > 0:
