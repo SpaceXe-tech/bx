@@ -15,7 +15,7 @@ ntgcalls==1.1.2
 Flask
 gunicorn
 pykeyboard
-kurigram==2.2.14
+pyrotgfork
 python-dotenv
 pyyaml
 requests
