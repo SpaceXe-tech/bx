@@ -5,7 +5,7 @@ from urllib.parse import urlparse, unquote
 
 import aiohttp
 from bs4 import BeautifulSoup
-from youtubesearchpython.__future__ import VideosSearch
+from youtubesearchpython.future import VideosSearch
 
 
 class AppleAPI:
