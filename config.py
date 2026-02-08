@@ -16,7 +16,7 @@ BOT_TOKEN = getenv("BOT_TOKEN")
 # Get your mongo url from cloud.mongodb.com
 MONGO_DB_URI = getenv("MONGO_DB_URI")
 
-DURATION_LIMIT_MIN = int(getenv("DURATION_LIMIT", 240))
+DURATION_LIMIT_MIN = int(getenv("DURATION_LIMIT", 240000))
 
 # Chat id of a group for logging bot's activities
 LOGGER_ID = int(getenv("LOGGER_ID", None))
@@ -74,7 +74,7 @@ autoclean = []
 confirmer = {}
 
 START_IMG_URL = getenv(
-    "START_IMG_URL", "https://graph.org/file/6b54d8b294fe0b4934713-bb809aee23c5f19aa9.jpg"
+    "START_IMG_URL", "https://files.catbox.moe/zp9tec.jpg"
 )
 PING_IMG_URL = getenv(
     "PING_IMG_URL", "https://graph.org/file/6b54d8b294fe0b4934713-bb809aee23c5f19aa9.jpg"
