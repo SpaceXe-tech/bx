@@ -74,21 +74,21 @@ autoclean = []
 confirmer = {}
 
 START_IMG_URL = getenv(
-    "START_IMG_URL", "https://files.catbox.moe/zp9tec.jpg"
+    "START_IMG_URL", "https://i.imghippo.com/files/ayrL5198tE.jpg"
 )
 PING_IMG_URL = getenv(
-    "PING_IMG_URL", "https://graph.org/file/6b54d8b294fe0b4934713-bb809aee23c5f19aa9.jpg"
+    "PING_IMG_URL", "https://files.catbox.moe/zp9tec.jpg"
 )
-PLAYLIST_IMG_URL = "https://graph.org/file/4491c4c570d9ccb1a19d0-1fb0835d3592780331.jpg"
-STATS_IMG_URL = "https://graph.org/file/4491c4c570d9ccb1a19d0-1fb0835d3592780331.jpg"
-TELEGRAM_AUDIO_URL = "https://graph.org/file/4491c4c570d9ccb1a19d0-1fb0835d3592780331.jpg"
-TELEGRAM_VIDEO_URL = "https://graph.org/file/4491c4c570d9ccb1a19d0-1fb0835d3592780331.jpg"
-STREAM_IMG_URL = "https://graph.org/file/4491c4c570d9ccb1a19d0-1fb0835d3592780331.jpg"
-SOUNCLOUD_IMG_URL = "https://graph.org/file/4491c4c570d9ccb1a19d0-1fb0835d3592780331.jpg"
-YOUTUBE_IMG_URL = "https://graph.org/file/4491c4c570d9ccb1a19d0-1fb0835d3592780331.jpg"
+PLAYLIST_IMG_URL = "https://i.imghippo.com/files/qMgf6772GYM.jpg"
+STATS_IMG_URL = "https://i.imghippo.com/files/qMgf6772GYM.jpg"
+TELEGRAM_AUDIO_URL = "https://i.imghippo.com/files/NpQ1562es.jpg"
+TELEGRAM_VIDEO_URL = "https://i.imghippo.com/files/NpQ1562es.jpg"
+STREAM_IMG_URL = "https://i.imghippo.com/files/NpQ1562es.jpg"
+SOUNCLOUD_IMG_URL = "https://i.imghippo.com/files/NpQ1562es.jpg"
+YOUTUBE_IMG_URL = "https://i.imghippo.com/files/vBCP5351jzM.jpg"
 SPOTIFY_ARTIST_IMG_URL = "https://graph.org/file/4491c4c570d9ccb1a19d0-1fb0835d3592780331.jpg"
 SPOTIFY_ALBUM_IMG_URL = "https://graph.org/file/4491c4c570d9ccb1a19d0-1fb0835d3592780331.jpg"
-SPOTIFY_PLAYLIST_IMG_URL = "https://graph.org/file/4491c4c570d9ccb1a19d0-1fb0835d3592780331.jpg"
+SPOTIFY_PLAYLIST_IMG_URL = "https://i.imghippo.com/files/gFH4324htk.jpg"
 
 # Add API_URL1 and API_URL2 loaded from .env
 API_URL = getenv("API_URL", None)
