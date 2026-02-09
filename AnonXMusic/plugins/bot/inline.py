@@ -7,6 +7,7 @@ from youtubesearchpython.future import VideosSearch
 
 from AnonXMusic import app
 from AnonXMusic.utils.inlinequery import answer
+
 from config import BANNED_USERS
 
 
@@ -66,4 +67,5 @@ async def inline_query_handler(client, query):
             return await client.answer_inline_query(query.id, results=answers)
         except:
             return
+
 
