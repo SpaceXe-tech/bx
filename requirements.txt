@@ -26,8 +26,7 @@ unidecode
 uvloop
 yt-dlp
 youtube-search
-yt-search-python 
-Flask
+yt-search-python
 Flask-RESTful
 pymongo
 httpx[http2]
