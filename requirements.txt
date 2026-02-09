@@ -30,6 +30,6 @@ yt-search-python
 Flask
 Flask-RESTful
 pymongo
-httpx[http2]==0.27.
-pyrogram
+httpx[http2]
+
 cachetools
