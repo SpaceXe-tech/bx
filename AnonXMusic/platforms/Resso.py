@@ -6,6 +6,7 @@ from bs4 import BeautifulSoup
 from youtubesearchpython.__future__ import VideosSearch
 
 
+
 class RessoAPI:
     def __init__(self):
         self.regex = r"^(https:\/\/m.resso.com\/)(.*)$"
