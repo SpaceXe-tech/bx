@@ -15,7 +15,7 @@ ntgcalls==1.1.2
 Flask
 gunicorn
 pykeyboard
-pyrotgfork
+kurigram
 python-dotenv
 pyyaml
 requests
