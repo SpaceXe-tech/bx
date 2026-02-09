@@ -28,7 +28,7 @@ def get_invite_link(username: str) -> str:
 
 
 async def send_force_join_message(client: Client, user_id: int, old_msg_id: int = None):
-    if user_id in sudoers_list:
+    if user_id in sudoers_list():
         return False
 
     need_channel = not await check_user_membership(client, user_id, MUST_JOIN_CHANNEL)
@@ -79,7 +79,7 @@ async def send_force_join_message(client: Client, user_id: int, old_msg_id: int 
 async def must_join_handler(client: Client, msg: Message):
     if not msg.from_user:
         return
-    if msg.from_user.id in sudoers_list:
+    if msg.from_user.id in sudoers_list():
         return
     try:
         blocked = await send_force_join_message(client, msg.from_user.id)
@@ -94,7 +94,7 @@ async def recheck_callback(client: Client, callback_query: CallbackQuery):
     user = callback_query.from_user
     msg = callback_query.message
 
-    if user.id in sudoers_list:
+    if user.id in sudoers_list():
         try:
             await client.delete_messages(chat_id=user.id, message_ids=msg.id)
         except:
