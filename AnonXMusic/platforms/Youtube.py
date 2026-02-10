@@ -361,35 +361,33 @@ class YouTubeAPI:
     async def track(self, query: str) -> Tuple[Dict[str, Any], str]:
         query = (query or "").strip()
         is_yt_link = bool(re.search(self.regex, query))
-        if is_yt_link:
-            prepared = self._prepare_link(query, None)
-            title, duration_min, duration_sec, thumb, vidid = await self.info(prepared)
-        else:
-            title, duration_min, duration_sec, thumb, vidid = await self.info(query)
+        prepared = self._prepare_link(query, None) if is_yt_link else query
+        title, duration_min, duration_sec, thumb, vidid = await self.info(prepared)
         if not title:
             return {}, ""
         if not vidid:
             try:
-                vidid = self.extract_video_id(prepared if is_yt_link else query)
+                vidid = self.extract_video_id(prepared)
             except Exception:
-                pass
+                vidid = ""
         if vidid:
             link = f"https://youtu.be/{vidid}"
         else:
-            link = prepared if is_yt_link else query
+            link = prepared
         details = {
             "title": title,
             "duration_min": duration_min,
             "duration_sec": duration_sec,
             "thumb": thumb or "",
             "link": link,
+            "vidid": vidid,
         }
         return details, vidid
 
     async def download(
         self,
         link: str,
-        mystic: Any,
+        mystic,
         video: bool = False,
         videoid: bool = False,
         songaudio: bool = False,
@@ -555,7 +553,7 @@ class YouTubeAPI:
                 timeout=DOWNLOAD_TIMEOUT,
             )
             return result, result is not None
-    
+
         except asyncio.TimeoutError:
             logger.error(f"Download timeout: {video_id}")
             return None, False
