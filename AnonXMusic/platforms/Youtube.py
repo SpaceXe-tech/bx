@@ -1,4 +1,3 @@
-
 import os
 import re
 import json
@@ -169,15 +168,17 @@ class YouTubeAPI:
 
     def extract_video_id(self, link: str) -> str:
         link = self._clean_url(link)
-        patterns = [
-            r"(?:v=|/)([A-Za-z0-9_-]{11})",
-        ]
-        for pattern in patterns:
-            match = re.search(pattern, link)
-            if match:
-                return match.group(1)
         if re.match(r"^[A-Za-z0-9_-]{11}$", link):
             return link
+        match = re.search(r"[?&]v=([A-Za-z0-9_-]{11})", link)
+        if match:
+            return match.group(1)
+        match = re.search(r"youtu\.be/([A-Za-z0-9_-]{11})", link)
+        if match:
+            return match.group(1)
+        match = re.search(r"/shorts/([A-Za-z0-9_-]{11})", link)
+        if match:
+            return match.group(1)
         raise ValueError(f"Invalid YouTube link: {link}")
 
     async def exists(self, link: str, videoid: Union[bool, str] = None) -> bool:
@@ -219,8 +220,7 @@ class YouTubeAPI:
         if videoid:
             link = self.base + link
         link = self._clean_url(link)
-        if "&" in link:
-            link = link.split("&")[0]
+        link = link.split("&")[0] if "&" in link else link
         result = await self._get_info(link)
         if not result:
             return "", "", 0, "", ""
@@ -244,8 +244,7 @@ class YouTubeAPI:
         if videoid:
             link = self.base + link
         link = self._clean_url(link)
-        if "&" in link:
-            link = link.split("&")[0]
+        link = link.split("&")[0] if "&" in link else link
         result = await self._get_info(link)
         return result.get("title", "")
 
@@ -255,8 +254,7 @@ class YouTubeAPI:
         if videoid:
             link = self.base + link
         link = self._clean_url(link)
-        if "&" in link:
-            link = link.split("&")[0]
+        link = link.split("&")[0] if "&" in link else link
         result = await self._get_info(link)
         return result.get("duration", "")
 
@@ -266,8 +264,7 @@ class YouTubeAPI:
         if videoid:
             link = self.base + link
         link = self._clean_url(link)
-        if "&" in link:
-            link = link.split("&")[0]
+        link = link.split("&")[0] if "&" in link else link
         result = await self._get_info(link)
         thumbnails = result.get("thumbnails", [])
         return (
@@ -282,8 +279,7 @@ class YouTubeAPI:
         if videoid:
             link = self.base + link
         link = self._clean_url(link)
-        if "&" in link:
-            link = link.split("&")[0]
+        link = link.split("&")[0] if "&" in link else link
         try:
             proc = await asyncio.wait_for(
                 asyncio.create_subprocess_exec(
@@ -340,8 +336,7 @@ class YouTubeAPI:
         if videoid:
             link = self.base + link
         link = self._clean_url(link)
-        if "&" in link:
-            link = link.split("&")[0]
+        link = link.split("&")[0] if "&" in link else link
         result = await self._get_info(link)
         if not result:
             return {}, ""
@@ -362,9 +357,9 @@ class YouTubeAPI:
         if videoid:
             link = self.base + link
         link = self._clean_url(link)
-        if "&" in link:
-            link = link.split("&")[0]
+        link = link.split("&")[0] if "&" in link else link
         try:
+
             def get_formats():
                 ydl = yt_dlp.YoutubeDL(
                     {"quiet": True, "cookiefile": cookie_txt_file()}
@@ -408,8 +403,7 @@ class YouTubeAPI:
         if videoid:
             link = self.base + link
         link = self._clean_url(link)
-        if "&" in link:
-            link = link.split("&")[0]
+        link = link.split("&")[0] if "&" in link else link
         try:
             results = VideosSearch(link, limit=min(query_type + 1, 10))
             result_data = await asyncio.wait_for(
@@ -444,8 +438,7 @@ class YouTubeAPI:
         if videoid:
             link = self.base + link
         link = self._clean_url(link)
-        if "&" in link:
-            link = link.split("&")[0]
+        link = link.split("&")[0] if "&" in link else link
         try:
             video_id = self.extract_video_id(link)
         except ValueError:
@@ -589,7 +582,6 @@ class YouTubeAPI:
                     timeout=DOWNLOAD_TIMEOUT,
                 )
                 return result, result is not None
-
 
             elif video:
                 api_result = await download_with_api(video_id, "video")
