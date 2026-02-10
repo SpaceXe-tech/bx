@@ -290,86 +290,7 @@ class YouTubeAPI:
                 return 0, stderr.decode()
         except Exception:
             return 0, "Timeout or error occurred"
-    
-    async def playlist(
-        self,
-        link: str,
-        limit: int,
-        user_id: int,
-        videoid: Union[bool, str] = None,
-    ) -> list:
-        link = self._clean_url(link)
 
-        if videoid:
-            link = self.listbase + link
-
-        try:
-            plist = await Playlist.get(link)
-            ids = []
-            for data in plist.get("videos", [])[:limit]:
-                vid = data.get("id")
-                if vid:
-                    ids.append(vid)
-            return ids
-        except Exception as e:
-            logger.error(f"Playlist parse error for {link}: {e}")
-            return []
-
-    async def track(
-        self, link: str, videoid: Union[bool, str] = None
-    ) -> Tuple[Dict[str, Any], str]:
-        if videoid:
-            link = self.base + link
-        result = await self._get_info(link)
-        if not result:
-            return {}, ""
-        track_details = {
-            "title": result.get("title", ""),
-            "link": result.get("link", ""),
-            "vidid": result.get("id", ""),
-            "duration_min": result.get("duration", ""),
-            "thumb": result.get("thumbnails", [{}])[0].get("url", "").split("?")[0],
-        }
-        return track_details, result.get("id", "")
-
-    async def formats(
-        self, link: str, videoid: Union[bool, str] = None
-    ) -> Tuple[list, str]:
-        if videoid:
-            link = self.base + link
-        link = (link or "").strip()
-        if "&" in link:
-            link = link.split("&", 1)[0]
-        try:
-            def get_formats():
-                ydl = yt_dlp.YoutubeDL(
-                    {"quiet": True, "cookiefile": cookie_txt_file()}
-                )
-                formats_available = []
-                with ydl:
-                    r = ydl.extract_info(link, download=False)
-                    for fmt in r.get("formats", []):
-                        if all(k in fmt for k in ["format", "format_id", "ext"]):
-                            if "dash" not in str(fmt["format"]).lower():
-                                formats_available.append(
-                                    {
-                                        "format": fmt["format"],
-                                        "filesize": fmt.get("filesize"),
-                                        "format_id": fmt["format_id"],
-                                        "ext": fmt["ext"],
-                                        "format_note": fmt.get("format_note", ""),
-                                        "yturl": link,
-                                    }
-                                )
-                return formats_available
-
-            formats = await asyncio.wait_for(
-                asyncio.get_event_loop().run_in_executor(None, get_formats),
-                timeout=TIMEOUT,
-            )
-            return formats, link
-        except Exception:
-            return [], link
 
     async def slider(
         self, link: str, query_type: int, videoid: Union[bool, str] = None
@@ -380,7 +301,49 @@ class YouTubeAPI:
         if "&" in link:
             link = link.split("&", 1)[0]
         try:
-            results = VideosSearch(link, limit=min(query_type + 1, 10))
+
+    async def playlist(
+        self,
+        link: str,
+        limit: int,
+        user_id: int,
+        videoid: Union[bool, str] = None,
+    ) -> list:
+        link = (link or "").strip()
+        if videoid:
+            link = self.listbase + link
+        if "&" in link:
+            link = link.split("&", 1)[0]
+        try:
+            def get_playlist_ids():
+                ydl_opts = {
+                    "quiet": True,
+                    "no_warnings": True,
+                    "extract_flat": True,
+                    "skip_download": True,
+                    "cookiefile": cookie_txt_file(),
+                }
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    info = ydl.extract_info(link, download=False)
+                    if not info:
+                        return []
+                    entries = info.get("entries", []) or []
+                    ids = []
+                    for entry in entries[:limit]:
+                        vid = entry.get("id")
+                        if vid:
+                            ids.append(vid)
+                    return ids
+
+            loop = asyncio.get_running_loop()
+            ids = await asyncio.wait_for(
+                loop.run_in_executor(None, get_playlist_ids),
+                timeout=TIMEOUT,
+            )
+            return ids
+        except Exception as e:
+            logger.error(f"Playlist parse error for {link}: {e}")
+            return []            results = VideosSearch(link, limit=min(query_type + 1, 10))
             result_data = await asyncio.wait_for(results.next(), timeout=TIMEOUT)
             result_list = result_data.get("result", [])
             if query_type < len(result_list):
