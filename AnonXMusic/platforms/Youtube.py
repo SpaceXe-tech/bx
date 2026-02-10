@@ -542,3 +542,11 @@ class YouTubeAPI:
                     timeout=DOWNLOAD_TIMEOUT,
                 )
                 return result, result is not None
+
+        except asyncio.TimeoutError:
+            logger.error(f"Download timeout: {video_id}")
+            return None, False
+
+        except Exception as e:
+            logger.error(f"Download error: {str(e)}")
+            return None, False
