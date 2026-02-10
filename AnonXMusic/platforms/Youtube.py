@@ -324,7 +324,7 @@ class YouTubeAPI:
         user_id: int,
         videoid: Union[bool, str] = None,
     ) -> list:
-        link = (link or "").strip().strip("<>")
+        link = self._clean_url(link)
 
         if videoid:
             link = self.listbase + link
@@ -337,22 +337,21 @@ class YouTubeAPI:
             link = link.split("&")[0]
 
         try:
-            pl = Playlist(link)
-            await asyncio.wait_for(pl.next(), timeout=TIMEOUT)
+            pl = await Playlist.get(link)
 
             ids: list[str] = []
-            for item in pl.videos:
+            for item in getattr(pl, "videos", []) or []:
                 vid = item.get("id")
                 if vid:
                     ids.append(vid)
                     if len(ids) >= limit:
                         return ids
 
-            while getattr(pl, "hasMoreVideos", False):
-                await asyncio.wait_for(pl.next(), timeout=TIMEOUT)
-                for item in pl.videos:
+            while getattr(pl, "hasMoreVideos", False) and len(ids) < limit:
+                await pl.getNextVideos()
+                for item in getattr(pl, "videos", []) or []:
                     vid = item.get("id")
-                    if vid:
+                    if vid and vid not in ids:
                         ids.append(vid)
                         if len(ids) >= limit:
                             return ids
