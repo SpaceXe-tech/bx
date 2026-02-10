@@ -156,7 +156,6 @@ async def download_with_api(video_id: str, download_mode: str = "audio") -> Opti
             pass
         return None
 
-
 class YouTubeAPI:
     def __init__(self):
         self.base = "https://www.youtube.com/watch?v="
@@ -164,27 +163,28 @@ class YouTubeAPI:
         self.regex = r"(?:youtube\.com|youtu\.be|music\.youtube\.com)"
         self.listbase = "https://youtube.com/playlist?list="
 
-    def _prepare_link(self, link: str, videoid: Union[str, bool, None] = None) -> str:
-        link = (link or "").strip().strip("<>")
-        if isinstance(videoid, str) and videoid.strip():
-            link = self.base_url + videoid.strip()
-        elif isinstance(videoid, bool) and videoid:
-            if re.fullmatch(r"[0-9A-Za-z_-]{11}", link):
-                link = self.base_url + link
-        if "youtu.be" in link:
-            link = self.base_url + link.split("/")[-1].split("?")[0]
-        elif "youtube.com/shorts/" in link or "youtube.com/live/" in link:
-            link = self.base_url + link.split("/")[-1].split("?")[0]
-        return link.split("&")[0]
-
     def _extract_raw_video_id(self, value: str) -> str:
         value = (value or "").strip().strip("<>")
+
         if re.fullmatch(r"[0-9A-Za-z_-]{11}", value):
             return value
+
+        if "youtu.be/" in value:
+            return value.split("youtu.be/")[-1].split("?")[0].split("&")[0]
+
+        if "youtube.com/shorts/" in value:
+            return value.split("youtube.com/shorts/")[-1].split("?")[0].split("&")[0]
+
+        if "youtube.com/live/" in value:
+            return value.split("youtube.com/live/")[-1].split("?")[0].split("&")[0]
+
         if "v=" in value:
-            return value.split("v=")[-1].split("&")[0]
-        if "youtu.be" in value or "youtube.com" in value:
-            return value.split("/")[-1].split("?")[0]
+            part = value.split("v=")[-1]
+            return part.split("&")[0].split("?")[0]
+
+        if "youtube.com" in value or "music.youtube.com" in value:
+            return value.rsplit("/", 1)[-1].split("?")[0].split("&")[0]
+
         return value
 
     def extract_video_id(self, value: str) -> str:
@@ -192,6 +192,25 @@ class YouTubeAPI:
         if re.fullmatch(r"[0-9A-Za-z_-]{11}", raw):
             return raw
         raise ValueError(f"Invalid YouTube link or video id: {value}")
+
+    def _prepare_link(self, link: str, videoid: Union[str, bool, None] = None) -> str:
+        link = (link or "").strip().strip("<>")
+
+        if isinstance(videoid, str) and videoid.strip():
+            vid = self.extract_video_id(videoid.strip())
+            return f"{self.base_url}{vid}"
+
+        if isinstance(videoid, bool) and videoid:
+            if re.fullmatch(r"[0-9A-Za-z_-]{11}", link):
+                return f"{self.base_url}{link}"
+
+        try:
+            vid = self.extract_video_id(link)
+            return f"{self.base_url}{vid}"
+        except ValueError:
+            pass
+
+        return link.split("&")[0]
 
     async def exists(self, link: str, videoid: Union[bool, str] = None) -> bool:
         link = self._prepare_link(link, videoid)
@@ -218,7 +237,8 @@ class YouTubeAPI:
 
     async def _get_info(self, link: str) -> Dict[str, Any]:
         try:
-            results = VideosSearch(link, limit=1)
+            vid = self.extract_video_id(link)
+            results = VideosSearch(vid, limit=1)
             result_data = await asyncio.wait_for(results.next(), timeout=TIMEOUT)
             return result_data["result"][0] if result_data["result"] else {}
         except Exception:
@@ -298,7 +318,9 @@ class YouTubeAPI:
     async def slider(
         self, link: str, query_type: int, videoid: Union[bool, str] = None
     ) -> Tuple[str, str, str, str]:
-        link = self._prepare_link(link, videoid)
+        if videoid:
+            link = self._prepare_link(link, videoid)
+        link = (link or "").strip()
         try:
             results = VideosSearch(link, limit=min(query_type + 1, 10))
             result_data = await asyncio.wait_for(results.next(), timeout=TIMEOUT)
@@ -344,7 +366,6 @@ class YouTubeAPI:
                     ids = []
                     for entry in entries[:limit]:
                         vid = entry.get("id")
-                        if vid:
                             ids.append(vid)
                     return ids
 
