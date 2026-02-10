@@ -337,41 +337,36 @@ class YouTubeAPI:
             pass
         return "", "", "", ""
 
-    async def playlist(
-        self,
-        link: str,
-        limit: int,
-        user_id: int,
-        videoid: Union[bool, str] = None,
-    ) -> list:
+    async def playlist(self, link: str, limit: int, user_id: int, videoid: Union[bool, str] = None):
         link = (link or "").strip()
         if videoid:
             link = self.listbase + str(link).strip()
         if "&" in link:
             link = link.split("&", 1)[0]
         try:
-            def get_playlist_ids():
-                ydl_opts = {
+            def _get_playlist_id():
+                o = {
                     "quiet": True,
                     "no_warnings": True,
                     "extract_flat": True,
                     "skip_download": True,
                     "cookiefile": cookie_txt_file(),
                 }
-                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                    info = ydl.extract_info(link, download=False)
+                with yt_dlp.YoutubeDL(o) as y:
+                    info = y.extract_info(link, download=False)
                     if not info:
                         return []
-                    entries = info.get("entries", []) or []
+                    e = info.get("entries", []) or []
                     ids = []
-                    for entry in entries[:limit]:
-                        vid = entry.get("id")
-                            ids.append(vid)
+                    for x in e[:limit]:
+                        v = x.get("id")
+                        if v:
+                            ids.append(v)
                     return ids
 
             loop = asyncio.get_running_loop()
             ids = await asyncio.wait_for(
-                loop.run_in_executor(None, get_playlist_ids),
+                loop.run_in_executor(None, _g),
                 timeout=TIMEOUT,
             )
             return ids
