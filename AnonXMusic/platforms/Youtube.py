@@ -281,6 +281,11 @@ class YouTubeAPI:
         link = self._clean_url(link)
         link = link.split("&")[0] if "&" in link else link
         try:
+            vid = self.extract_video_id(link)
+        except ValueError:
+            return 0, "Invalid YouTube link"
+        safe_url = f"{self.base}{vid}"
+        try:
             proc = await asyncio.wait_for(
                 asyncio.create_subprocess_exec(
                     "yt-dlp",
@@ -289,9 +294,11 @@ class YouTubeAPI:
                     "-g",
                     "-f",
                     "best[height<=?720][width<=?1280]",
-                    link,
+                    safe_url,
                     stdout=asyncio.subprocess.PIPE,
                     stderr=asyncio.subprocess.PIPE,
+                    stdin=asyncio.subprocess.DEVNULL,
+                    env={"PATH": os.environ.get("PATH", "")},
                 ),
                 timeout=TIMEOUT,
             )
@@ -314,17 +321,43 @@ class YouTubeAPI:
         videoid: Union[bool, str] = None,
     ) -> list:
         link = self._clean_url(link)
-
-        if videoid:
-            link = self.listbase + link
-
         try:
-            plist = await Playlist.get(link)
-            ids = []
-            for data in plist.get("videos", [])[:limit]:
-                vid = data.get("id")
-                if vid:
-                    ids.append(vid)
+            if videoid:
+                pid = link
+            else:
+                m = re.search(r"[?&]list=([A-Za-z0-9_-]{10,64})", link)
+                if not m:
+                    return []
+                pid = m.group(1)
+            safe_link = self.listbase + pid
+        except Exception:
+            return []
+        try:
+            def get_playlist_ids():
+                ydl_opts = {
+                    "quiet": True,
+                    "no_warnings": True,
+                    "extract_flat": True,
+                    "skip_download": True,
+                    "cookiefile": cookie_txt_file(),
+                }
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    info = ydl.extract_info(safe_link, download=False)
+                    if not info:
+                        return []
+                    entries = info.get("entries", [])
+                    ids = []
+                    for entry in entries[:limit]:
+                        vid = entry.get("id")
+                        if vid:
+                            ids.append(vid)
+                    return ids
+
+            loop = asyncio.get_running_loop()
+            ids = await asyncio.wait_for(
+                loop.run_in_executor(None, get_playlist_ids),
+                timeout=TIMEOUT,
+            )
             return ids
         except Exception as e:
             logger.error(f"Playlist parse error for {link}: {e}")
@@ -359,14 +392,18 @@ class YouTubeAPI:
         link = self._clean_url(link)
         link = link.split("&")[0] if "&" in link else link
         try:
-
+            vid = self.extract_video_id(link)
+        except ValueError:
+            return [], link
+        safe_url = f"{self.base}{vid}"
+        try:
             def get_formats():
                 ydl = yt_dlp.YoutubeDL(
                     {"quiet": True, "cookiefile": cookie_txt_file()}
                 )
                 formats_available = []
                 with ydl:
-                    r = ydl.extract_info(link, download=False)
+                    r = ydl.extract_info(safe_url, download=False)
                     for format in r.get("formats", []):
                         if all(
                             key in format
@@ -382,7 +419,7 @@ class YouTubeAPI:
                                         "format_note": format.get(
                                             "format_note", ""
                                         ),
-                                        "yturl": link,
+                                        "yturl": safe_url,
                                     }
                                 )
                 return formats_available
@@ -393,9 +430,9 @@ class YouTubeAPI:
                 ),
                 timeout=TIMEOUT,
             )
-            return formats, link
+            return formats, safe_url
         except:
-            return [], link
+            return [], safe_url
 
     async def slider(
         self, link: str, query_type: int, videoid: Union[bool, str] = None
@@ -443,6 +480,8 @@ class YouTubeAPI:
             video_id = self.extract_video_id(link)
         except ValueError:
             return None, False
+
+        link = f"{self.base}{video_id}"
 
         os.makedirs("downloads", exist_ok=True)
 
@@ -533,7 +572,6 @@ class YouTubeAPI:
             except:
                 return None
 
-        
         def ytdlp_song_audio():
             if not format_id or not title:
                 return None
