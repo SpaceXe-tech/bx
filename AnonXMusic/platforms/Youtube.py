@@ -1,3 +1,4 @@
+
 import os
 import re
 import json
@@ -163,44 +164,36 @@ class YouTubeAPI:
         self.regex = r"(?:youtube\.com|youtu\.be|music\.youtube\.com)"
         self.listbase = "https://www.youtube.com/playlist?list="
 
+    def _clean_url(self, link: str) -> str:
+        return (link or "").strip().strip("<>")
+
     def extract_video_id(self, link: str) -> str:
-        link = (link or "").strip().strip("<>")
+        link = self._clean_url(link)
         patterns = [
-            r"(?:https?://)?(?:www\.)?(?:youtube\.com|music\.youtube\.com)/watch\?v=([0-9A-Za-z_-]{11})",
-            r"(?:https?://)?(?:www\.)?youtu\.be/([0-9A-Za-z_-]{11})",
-            r"(?:https?://)?(?:www\.)?(?:youtube\.com|music\.youtube\.com)/embed/([0-9A-Za-z_-]{11})",
-            r"(?:https?://)?(?:www\.)?(?:youtube\.com|music\.youtube\.com)/v/([0-9A-Za-z_-]{11})",
+            r"(?:v=|/)([A-Za-z0-9_-]{11})",
         ]
         for pattern in patterns:
             match = re.search(pattern, link)
             if match:
                 return match.group(1)
-        if re.match(r"^[0-9A-Za-z_-]{11}$", link):
+        if re.match(r"^[A-Za-z0-9_-]{11}$", link):
             return link
         raise ValueError(f"Invalid YouTube link: {link}")
-
-    def extract_playlist_id(self, link: str) -> Optional[str]:
-        link = (link or "").strip().strip("<>")
-        m = re.search(r"[?&]list=([0-9A-Za-z_-]+)", link)
-        if m:
-            return m.group(1)
-        return None
 
     async def exists(self, link: str, videoid: Union[bool, str] = None) -> bool:
         if videoid:
             link = self.base + link
-        return bool(re.search(self.regex, link or ""))
+        return bool(re.search(self.regex, link))
 
     async def url(self, message_1: Message) -> Optional[str]:
         messages = [message_1]
         if message_1.reply_to_message:
             messages.append(message_1.reply_to_message)
-
         for message in messages:
-            text = (message.text or message.caption or "")
             if message.entities:
                 for entity in message.entities:
                     if entity.type == MessageEntityType.URL:
+                        text = message.text or message.caption
                         if text:
                             return text[entity.offset : entity.offset + entity.length]
                     elif entity.type == MessageEntityType.TEXT_LINK:
@@ -213,7 +206,7 @@ class YouTubeAPI:
 
     async def _get_info(self, link: str) -> Dict[str, Any]:
         try:
-            link = (link or "").strip().strip("<>")
+            link = self._clean_url(link)
             results = VideosSearch(link, limit=1)
             result_data = await asyncio.wait_for(results.next(), timeout=TIMEOUT)
             return result_data["result"][0] if result_data["result"] else {}
@@ -225,7 +218,7 @@ class YouTubeAPI:
     ) -> Tuple[str, str, int, str, str]:
         if videoid:
             link = self.base + link
-        link = (link or "").strip().strip("<>")
+        link = self._clean_url(link)
         if "&" in link:
             link = link.split("&")[0]
         result = await self._get_info(link)
@@ -250,7 +243,7 @@ class YouTubeAPI:
     ) -> str:
         if videoid:
             link = self.base + link
-        link = (link or "").strip().strip("<>")
+        link = self._clean_url(link)
         if "&" in link:
             link = link.split("&")[0]
         result = await self._get_info(link)
@@ -261,7 +254,7 @@ class YouTubeAPI:
     ) -> str:
         if videoid:
             link = self.base + link
-        link = (link or "").strip().strip("<>")
+        link = self._clean_url(link)
         if "&" in link:
             link = link.split("&")[0]
         result = await self._get_info(link)
@@ -272,7 +265,7 @@ class YouTubeAPI:
     ) -> str:
         if videoid:
             link = self.base + link
-        link = (link or "").strip().strip("<>")
+        link = self._clean_url(link)
         if "&" in link:
             link = link.split("&")[0]
         result = await self._get_info(link)
@@ -288,7 +281,7 @@ class YouTubeAPI:
     ) -> Tuple[int, str]:
         if videoid:
             link = self.base + link
-        link = (link or "").strip().strip("<>")
+        link = self._clean_url(link)
         if "&" in link:
             link = link.split("&")[0]
         try:
@@ -328,34 +321,14 @@ class YouTubeAPI:
 
         if videoid:
             link = self.listbase + link
-        else:
-            pl_id = self.extract_playlist_id(link)
-            if pl_id:
-                link = self.listbase + pl_id
-
-        if "&" in link:
-            link = link.split("&")[0]
 
         try:
-            pl = await Playlist.get(link)
-
-            ids: list[str] = []
-            for item in getattr(pl, "videos", []) or []:
-                vid = item.get("id")
+            plist = await Playlist.get(link)
+            ids = []
+            for data in plist.get("videos", [])[:limit]:
+                vid = data.get("id")
                 if vid:
                     ids.append(vid)
-                    if len(ids) >= limit:
-                        return ids
-
-            while getattr(pl, "hasMoreVideos", False) and len(ids) < limit:
-                await pl.getNextVideos()
-                for item in getattr(pl, "videos", []) or []:
-                    vid = item.get("id")
-                    if vid and vid not in ids:
-                        ids.append(vid)
-                        if len(ids) >= limit:
-                            return ids
-
             return ids
         except Exception as e:
             logger.error(f"Playlist parse error for {link}: {e}")
@@ -366,7 +339,7 @@ class YouTubeAPI:
     ) -> Tuple[Dict[str, Any], str]:
         if videoid:
             link = self.base + link
-        link = (link or "").strip().strip("<>")
+        link = self._clean_url(link)
         if "&" in link:
             link = link.split("&")[0]
         result = await self._get_info(link)
@@ -388,11 +361,10 @@ class YouTubeAPI:
     ) -> Tuple[list, str]:
         if videoid:
             link = self.base + link
-        link = (link or "").strip().strip("<>")
+        link = self._clean_url(link)
         if "&" in link:
             link = link.split("&")[0]
         try:
-
             def get_formats():
                 ydl = yt_dlp.YoutubeDL(
                     {"quiet": True, "cookiefile": cookie_txt_file()}
@@ -435,7 +407,7 @@ class YouTubeAPI:
     ) -> Tuple[str, str, str, str]:
         if videoid:
             link = self.base + link
-        link = (link or "").strip().strip("<>")
+        link = self._clean_url(link)
         if "&" in link:
             link = link.split("&")[0]
         try:
@@ -471,7 +443,7 @@ class YouTubeAPI:
     ) -> Tuple[Optional[str], bool]:
         if videoid:
             link = self.base + link
-        link = (link or "").strip().strip("<>")
+        link = self._clean_url(link)
         if "&" in link:
             link = link.split("&")[0]
         try:
@@ -568,6 +540,7 @@ class YouTubeAPI:
             except:
                 return None
 
+        
         def ytdlp_song_audio():
             if not format_id or not title:
                 return None
@@ -616,6 +589,7 @@ class YouTubeAPI:
                     timeout=DOWNLOAD_TIMEOUT,
                 )
                 return result, result is not None
+
 
             elif video:
                 api_result = await download_with_api(video_id, "video")
