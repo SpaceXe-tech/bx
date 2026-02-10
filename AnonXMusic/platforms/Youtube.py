@@ -156,7 +156,6 @@ async def download_with_api(video_id: str, download_mode: str = "audio") -> Opti
             pass
         return None
 
-
 class YouTubeAPI:
     def __init__(self):
         self.base = "https://www.youtube.com/watch?v="
@@ -321,17 +320,8 @@ class YouTubeAPI:
         videoid: Union[bool, str] = None,
     ) -> list:
         link = self._clean_url(link)
-        try:
-            if videoid:
-                pid = link
-            else:
-                m = re.search(r"[?&]list=([A-Za-z0-9_-]{10,64})", link)
-                if not m:
-                    return []
-                pid = m.group(1)
-            safe_link = self.listbase + pid
-        except Exception:
-            return []
+        if videoid:
+            link = self.listbase + link
         try:
             def get_playlist_ids():
                 ydl_opts = {
@@ -342,7 +332,7 @@ class YouTubeAPI:
                     "cookiefile": cookie_txt_file(),
                 }
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                    info = ydl.extract_info(safe_link, download=False)
+                    info = ydl.extract_info(link, download=False)
                     if not info:
                         return []
                     entries = info.get("entries", [])
