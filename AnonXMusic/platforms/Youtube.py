@@ -156,6 +156,7 @@ async def download_with_api(video_id: str, download_mode: str = "audio") -> Opti
             pass
         return None
 
+
 class YouTubeAPI:
     def __init__(self):
         self.base = "https://www.youtube.com/watch?v="
@@ -163,28 +164,27 @@ class YouTubeAPI:
         self.regex = r"(?:youtube\.com|youtu\.be|music\.youtube\.com)"
         self.listbase = "https://youtube.com/playlist?list="
 
+    def _prepare_link(self, link: str, videoid: Union[str, bool, None] = None) -> str:
+        link = (link or "").strip().strip("<>")
+        if isinstance(videoid, str) and videoid.strip():
+            link = self.base_url + videoid.strip()
+        elif isinstance(videoid, bool) and videoid:
+            if re.fullmatch(r"[0-9A-Za-z_-]{11}", link):
+                link = self.base_url + link
+        if "youtu.be" in link:
+            link = self.base_url + link.split("/")[-1].split("?")[0]
+        elif "youtube.com/shorts/" in link or "youtube.com/live/" in link:
+            link = self.base_url + link.split("/")[-1].split("?")[0]
+        return link.split("&")[0]
+
     def _extract_raw_video_id(self, value: str) -> str:
         value = (value or "").strip().strip("<>")
-
         if re.fullmatch(r"[0-9A-Za-z_-]{11}", value):
             return value
-
-        if "youtu.be/" in value:
-            return value.split("youtu.be/")[-1].split("?")[0].split("&")[0]
-
-        if "youtube.com/shorts/" in value:
-            return value.split("youtube.com/shorts/")[-1].split("?")[0].split("&")[0]
-
-        if "youtube.com/live/" in value:
-            return value.split("youtube.com/live/")[-1].split("?")[0].split("&")[0]
-
         if "v=" in value:
-            part = value.split("v=")[-1]
-            return part.split("&")[0].split("?")[0]
-
-        if "youtube.com" in value or "music.youtube.com" in value:
-            return value.rsplit("/", 1)[-1].split("?")[0].split("&")[0]
-
+            return value.split("v=")[-1].split("&")[0]
+        if "youtu.be" in value or "youtube.com" in value:
+            return value.split("/")[-1].split("?")[0]
         return value
 
     def extract_video_id(self, value: str) -> str:
@@ -192,25 +192,6 @@ class YouTubeAPI:
         if re.fullmatch(r"[0-9A-Za-z_-]{11}", raw):
             return raw
         raise ValueError(f"Invalid YouTube link or video id: {value}")
-
-    def _prepare_link(self, link: str, videoid: Union[str, bool, None] = None) -> str:
-        link = (link or "").strip().strip("<>")
-
-        if isinstance(videoid, str) and videoid.strip():
-            vid = self.extract_video_id(videoid.strip())
-            return f"{self.base_url}{vid}"
-
-        if isinstance(videoid, bool) and videoid:
-            if re.fullmatch(r"[0-9A-Za-z_-]{11}", link):
-                return f"{self.base_url}{link}"
-
-        try:
-            vid = self.extract_video_id(link)
-            return f"{self.base_url}{vid}"
-        except ValueError:
-            pass
-
-        return link.split("&")[0]
 
     async def exists(self, link: str, videoid: Union[bool, str] = None) -> bool:
         link = self._prepare_link(link, videoid)
@@ -237,8 +218,7 @@ class YouTubeAPI:
 
     async def _get_info(self, link: str) -> Dict[str, Any]:
         try:
-            vid = self.extract_video_id(link)
-            results = VideosSearch(vid, limit=1)
+            results = VideosSearch(link, limit=1)
             result_data = await asyncio.wait_for(results.next(), timeout=TIMEOUT)
             return result_data["result"][0] if result_data["result"] else {}
         except Exception:
@@ -318,9 +298,7 @@ class YouTubeAPI:
     async def slider(
         self, link: str, query_type: int, videoid: Union[bool, str] = None
     ) -> Tuple[str, str, str, str]:
-        if videoid:
-            link = self._prepare_link(link, videoid)
-        link = (link or "").strip()
+        link = self._prepare_link(link, videoid)
         try:
             results = VideosSearch(link, limit=min(query_type + 1, 10))
             result_data = await asyncio.wait_for(results.next(), timeout=TIMEOUT)
@@ -337,42 +315,76 @@ class YouTubeAPI:
             pass
         return "", "", "", ""
 
-    async def playlist(self, link: str, limit: int, user_id: int, videoid: Union[bool, str] = None):
+    async def playlist(
+        self,
+        link: str,
+        limit: int,
+        user_id: int,
+        videoid: Union[bool, str] = None,
+    ) -> list:
         link = (link or "").strip()
         if videoid:
             link = self.listbase + str(link).strip()
         if "&" in link:
             link = link.split("&", 1)[0]
         try:
-            def _get_playlist_id():
-                o = {
+            def get_playlist_ids():
+                ydl_opts = {
                     "quiet": True,
                     "no_warnings": True,
                     "extract_flat": True,
                     "skip_download": True,
                     "cookiefile": cookie_txt_file(),
                 }
-                with yt_dlp.YoutubeDL(o) as y:
-                    info = y.extract_info(link, download=False)
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    info = ydl.extract_info(link, download=False)
                     if not info:
                         return []
-                    e = info.get("entries", []) or []
+                    entries = info.get("entries", []) or []
                     ids = []
-                    for x in e[:limit]:
-                        v = x.get("id")
-                        if v:
-                            ids.append(v)
+                    for entry in entries[:limit]:
+                        vid = entry.get("id")
+                        if vid:
+                            ids.append(vid)
                     return ids
 
             loop = asyncio.get_running_loop()
             ids = await asyncio.wait_for(
-                loop.run_in_executor(None, _g),
+                loop.run_in_executor(None, get_playlist_ids),
                 timeout=TIMEOUT,
             )
             return ids
         except Exception as e:
             logger.error(f"Playlist parse error for {link}: {e}")
             return []
+
+    async def track(self, query: str) -> Tuple[Dict[str, Any], str]:
+        query = (query or "").strip()
+        is_yt_link = bool(re.search(self.regex, query))
+        if is_yt_link:
+            prepared = self._prepare_link(query, None)
+            title, duration_min, duration_sec, thumb, vidid = await self.info(prepared)
+        else:
+            title, duration_min, duration_sec, thumb, vidid = await self.info(query)
+        if not title:
+            return {}, ""
+        if not vidid:
+            try:
+                vidid = self.extract_video_id(prepared if is_yt_link else query)
+            except Exception:
+                pass
+        if vidid:
+            link = f"https://youtu.be/{vidid}"
+        else:
+            link = prepared if is_yt_link else query
+        details = {
+            "title": title,
+            "duration_min": duration_min,
+            "duration_sec": duration_sec,
+            "thumb": thumb or "",
+            "link": link,
+        }
+        return details, vidid
 
     async def download(
         self,
@@ -543,7 +555,7 @@ class YouTubeAPI:
                 timeout=DOWNLOAD_TIMEOUT,
             )
             return result, result is not None
-
+    
         except asyncio.TimeoutError:
             logger.error(f"Download timeout: {video_id}")
             return None, False
