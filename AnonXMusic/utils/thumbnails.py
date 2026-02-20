@@ -10,7 +10,7 @@ from youtubesearchpython.future import VideosSearch
 from config import YOUTUBE_IMG_URL
 
 FONT_TITLE_PATH = "AnonXMusic/assets/font2.ttf"
-FONT_INFO_PATH = "AnonXMusic/assets/font.ttf"
+FONT_INFO_PATH = "AnonXMusic/assets/font2.ttf"
 
 def _extract_video_id_from_url(value: str) -> str:
     patterns = [
@@ -39,8 +39,8 @@ class Thumbnail:
     def __init__(self):
         self.size = (1280, 720)
         try:
-            self.font_title = ImageFont.truetype(FONT_TITLE_PATH, 32)
-            self.font_info = ImageFont.truetype(FONT_INFO_PATH, 32)
+            self.font_title = ImageFont.truetype(FONT_TITLE_PATH, 48)
+            self.font_info = ImageFont.truetype(FONT_INFO_PATH, 35)
         except Exception:
             self.font_title = ImageFont.load_default()
             self.font_info = ImageFont.load_default()
