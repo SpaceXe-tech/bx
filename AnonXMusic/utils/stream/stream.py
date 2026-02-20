@@ -109,7 +109,6 @@ async def stream(
                         duration_min,
                         user_name,
                     ),
-                    has_spoiler=True,
                     reply_markup=InlineKeyboardMarkup(button),
                 )
                 db[chat_id][0]["mystic"] = run
@@ -203,7 +202,6 @@ async def stream(
                     duration_min,
                     user_name,
                 ),
-                has_spoiler=True,
                 reply_markup=InlineKeyboardMarkup(button),
             )
             db[chat_id][0]["mystic"] = run
@@ -261,7 +259,6 @@ async def stream(
                 caption=_["stream_1"].format(
                     config.SUPPORT_CHAT, title[:23], duration_min, user_name
                 ),
-                has_spoiler=True,
                 reply_markup=InlineKeyboardMarkup(button),
             )
             db[chat_id][0]["mystic"] = run
@@ -394,7 +391,6 @@ async def stream(
                     duration_min,
                     user_name,
                 ),
-                has_spoiler=True,
                 reply_markup=InlineKeyboardMarkup(button),
             )
             db[chat_id][0]["mystic"] = run
