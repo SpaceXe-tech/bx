@@ -9,9 +9,9 @@ from youtubesearchpython.future import VideosSearch
 
 from config import YOUTUBE_IMG_URL
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-FONT_TITLE_PATH = os.path.join(BASE_DIR, "Raleway-Bold.ttf")
-FONT_INFO_PATH = os.path.join(BASE_DIR, "Inter-Light.ttf")
+BASE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "assets")
+FONT_TITLE_PATH = os.path.join(BASE_DIR, "font2.ttf")
+FONT_INFO_PATH = os.path.join(BASE_DIR, "font.ttf")
 
 def _extract_video_id_from_url(value: str) -> str:
     patterns = [
