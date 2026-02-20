@@ -39,8 +39,8 @@ class Thumbnail:
     def __init__(self):
         self.size = (1280, 720)
         try:
-            self.font_title = ImageFont.truetype(FONT_TITLE_PATH, 48)
-            self.font_info = ImageFont.truetype(FONT_INFO_PATH, 35)
+            self.font_title = ImageFont.truetype(FONT_TITLE_PATH, 32)
+            self.font_info = ImageFont.truetype(FONT_INFO_PATH, 32)
         except Exception:
             self.font_title = ImageFont.load_default()
             self.font_info = ImageFont.load_default()
@@ -127,15 +127,16 @@ class Thumbnail:
 
             draw = ImageDraw.Draw(bg)
             
-            tx_top = py + portrait_size[1] + 20 
-            safe_w = portrait_size[0] + 120
+            tx_top = py + portrait_size[1] + 30 
+            title_safe_w = portrait_size[0] + 120
+            info_safe_w = portrait_size[0] + 300 
 
-            title_text = self._truncate_text(draw, title.upper(), self.font_title, safe_w)
+            title_text = self._truncate_text(draw, title.upper(), self.font_title, title_safe_w)
             info = f"{channel}  •  {views}"
-            info_text = self._truncate_text(draw, info, self.font_info, safe_w)
+            info_text = self._truncate_text(draw, info, self.font_info, info_safe_w)
 
             draw.text((self.size[0] // 2, tx_top), title_text, font=self.font_title, fill=(255, 255, 255), anchor="ma")
-            draw.text((self.size[0] // 2, tx_top + 55), info_text, font=self.font_info, fill=(255, 255, 255, 210), anchor="ma")
+            draw.text((self.size[0] // 2, tx_top + 80), info_text, font=self.font_info, fill=(255, 255, 255, 210), anchor="ma")
 
             dominant = self._get_dominant_colors(raw_cover)
             bx, bt, bb = self.size[0] - 80, py + 20, py + portrait_size[1] - 20
