@@ -9,7 +9,7 @@ from youtubesearchpython.future import VideosSearch
 
 from config import YOUTUBE_IMG_URL
 
-FONT_TITLE_PATH = "AnonXMusic/assets/font2.ttf"
+FONT_TITLE_PATH = "AnonXMusic/assets/font.ttf"
 FONT_INFO_PATH = "AnonXMusic/assets/font2.ttf"
 
 def _extract_video_id_from_url(value: str) -> str:
