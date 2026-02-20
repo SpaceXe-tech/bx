@@ -66,7 +66,7 @@ class Thumbnail:
         img = image.copy().resize((50, 50)).convert("RGB")
         return Counter(list(img.getdata())).most_common(1)[0][0]
 
-    async def get_thumb(self, videoid: str) -> str:
+    async def generate(self, videoid: str) -> str:
         try:
             os.makedirs("cache", exist_ok=True)
             url, vid = _normalize_video_input(videoid)
@@ -146,6 +146,9 @@ class Thumbnail:
         except Exception:
             return YOUTUBE_IMG_URL
 
+async def get_thumb(videoid: str) -> str:
+    thumb = Thumbnail()
+    return await thumb.generate(videoid)
 
 async def get_qthumb(videoid: str) -> str:
     try:
