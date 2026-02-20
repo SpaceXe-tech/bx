@@ -9,8 +9,8 @@ from youtubesearchpython.future import VideosSearch
 
 from config import YOUTUBE_IMG_URL
 
-FONT_TITLE_PATH = "AnonXMusic/assets/font2.ttf"
-FONT_INFO_PATH = "AnonXMusic/assets/font.ttf"
+FONT_TITLE_PATH = "AnonXMusic/assets/font.ttf"
+FONT_INFO_PATH = "AnonXMusic/assets/font2.ttf"
 
 def _extract_video_id_from_url(value: str) -> str:
     patterns = [
@@ -55,12 +55,16 @@ class Thumbnail:
 
     def _truncate_text(self, draw, text, font, max_width):
         try:
-            text_length = draw.textlength(text, font=font)
+            get_width = lambda t: draw.textlength(t, font=font)
         except AttributeError:
-            text_length = draw.textsize(text, font=font)[0]
-        if text_length <= max_width:
+            get_width = lambda t: draw.textsize(t, font=font)[0]
+            
+        if get_width(text) <= max_width:
             return text
-        return text[:37] + ".."
+            
+        while text and get_width(text + "..") > max_width:
+            text = text[:-1]
+        return text + ".."
 
     def _get_dominant_colors(self, image):
         img = image.copy().resize((50, 50)).convert("RGB")
@@ -122,14 +126,16 @@ class Thumbnail:
             bg.paste(portrait, (px, py), portrait)
 
             draw = ImageDraw.Draw(bg)
-            tx_top = py + portrait_size[1] + 50
-            safe_w = self.size[0] - 160
+            
+            tx_top = py + portrait_size[1] + 20 
+            safe_w = portrait_size[0] - 20
 
             title_text = self._truncate_text(draw, title.upper(), self.font_title, safe_w)
             info = f"{channel}  •  {views}"
+            info_text = self._truncate_text(draw, info, self.font_info, safe_w)
 
             draw.text((self.size[0] // 2, tx_top), title_text, font=self.font_title, fill=(255, 255, 255), anchor="ma")
-            draw.text((self.size[0] // 2, tx_top + 70), info, font=self.font_info, fill=(255, 255, 255, 210), anchor="ma")
+            draw.text((self.size[0] // 2, tx_top + 60), info_text, font=self.font_info, fill=(255, 255, 255, 210), anchor="ma")
 
             dominant = self._get_dominant_colors(raw_cover)
             bx, bt, bb = self.size[0] - 80, py + 20, py + portrait_size[1] - 20
