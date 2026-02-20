@@ -9,9 +9,8 @@ from youtubesearchpython.future import VideosSearch
 
 from config import YOUTUBE_IMG_URL
 
-BASE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "assets")
-FONT_TITLE_PATH = os.path.join(BASE_DIR, "font.ttf")
-FONT_INFO_PATH = os.path.join(BASE_DIR, "font2.ttf")
+FONT_TITLE_PATH = "AnonXMusic/assets/font2.ttf"
+FONT_INFO_PATH = "AnonXMusic/assets/font.ttf"
 
 def _extract_video_id_from_url(value: str) -> str:
     patterns = [
@@ -40,8 +39,8 @@ class Thumbnail:
     def __init__(self):
         self.size = (1280, 720)
         try:
-            self.font_title = ImageFont.truetype(FONT_TITLE_PATH, 32)
-            self.font_info = ImageFont.truetype(FONT_INFO_PATH, 30)
+            self.font_title = ImageFont.truetype(FONT_TITLE_PATH, 55)
+            self.font_info = ImageFont.truetype(FONT_INFO_PATH, 40)
         except Exception:
             self.font_title = ImageFont.load_default()
             self.font_info = ImageFont.load_default()
@@ -67,7 +66,7 @@ class Thumbnail:
         img = image.copy().resize((50, 50)).convert("RGB")
         return Counter(list(img.getdata())).most_common(1)[0][0]
 
-    async def generate(self, videoid: str) -> str:
+    async def get_thumb(self, videoid: str) -> str:
         try:
             os.makedirs("cache", exist_ok=True)
             url, vid = _normalize_video_input(videoid)
@@ -106,9 +105,9 @@ class Thumbnail:
             
             bg = ImageOps.fit(raw_cover, self.size, method=Image.Resampling.LANCZOS)
             bg = bg.filter(ImageFilter.GaussianBlur(40))
-            bg = ImageEnhance.Brightness(bg).enhance(0.6)
-            bg = ImageEnhance.Contrast(bg).enhance(1.7)
-            bg = ImageEnhance.Color(bg).enhance(1.9)
+            bg = ImageEnhance.Brightness(bg).enhance(0.5)
+            bg = ImageEnhance.Contrast(bg).enhance(1.6)
+            bg = ImageEnhance.Color(bg).enhance(2.0)
 
             portrait_size = (540, 500)
             portrait = ImageOps.fit(raw_cover, portrait_size, method=Image.Resampling.LANCZOS)
@@ -123,14 +122,14 @@ class Thumbnail:
             bg.paste(portrait, (px, py), portrait)
 
             draw = ImageDraw.Draw(bg)
-            tx_top = py + portrait_size[1] + 90
-            safe_w = self.size[0] - 120
+            tx_top = py + portrait_size[1] + 50
+            safe_w = self.size[0] - 160
 
             title_text = self._truncate_text(draw, title.upper(), self.font_title, safe_w)
             info = f"{channel}  •  {views}"
 
             draw.text((self.size[0] // 2, tx_top), title_text, font=self.font_title, fill=(255, 255, 255), anchor="ma")
-            draw.text((self.size[0] // 2, tx_top + 75), info, font=self.font_info, fill=(255, 255, 255, 210), anchor="ma")
+            draw.text((self.size[0] // 2, tx_top + 70), info, font=self.font_info, fill=(255, 255, 255, 210), anchor="ma")
 
             dominant = self._get_dominant_colors(raw_cover)
             bx, bt, bb = self.size[0] - 80, py + 20, py + portrait_size[1] - 20
@@ -147,9 +146,6 @@ class Thumbnail:
         except Exception:
             return YOUTUBE_IMG_URL
 
-async def get_thumb(videoid: str) -> str:
-    thumb = Thumbnail()
-    return await thumb.generate(videoid)
 
 async def get_qthumb(videoid: str) -> str:
     try:
